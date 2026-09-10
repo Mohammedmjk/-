@@ -882,7 +882,7 @@
     let cartMap = {};
     let currentFilter = 'all';
     
-    // التحقق الصارم من حالة المدير وتثبيتها في الذاكرة المحلية
+    // فحص دقيق وثابت لحالة المدير في الذاكرة المحلية
     let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
     
     let currentPrintItem = null;
@@ -896,6 +896,7 @@
       populateStaffDropdown();
       updateStaffBadgeUI();
       
+      // تطبيق حالة الأمان للمدير أو الموظف عند تحميل الصفحة
       if (isAdminUnlocked) {
         unlockAdminUI(true);
       } else {
@@ -1020,9 +1021,9 @@
     }
 
     function initSystem() {
-      const localStock = localStorage.getItem('samo_inventory_v37');
+      const localStock = localStorage.getItem('samo_inventory_v38');
       if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
-      const localOrders = localStorage.getItem('samo_orders_v37');
+      const localOrders = localStorage.getItem('samo_orders_v38');
       if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
       const localPendingOrders = localStorage.getItem('samo_pending_orders');
       if (localPendingOrders) { try { pendingSyncOrders = JSON.parse(localPendingOrders); } catch(e){} }
@@ -1125,13 +1126,13 @@
             bonus: Number(p.bonus) || 0,
             expiryDate: p.expiryDate || ''
           }));
-          localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
+          localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
           hasNewData = true;
         }
 
         if (data && Array.isArray(data.orders)) {
           ordersList = data.orders;
-          localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
+          localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
           hasNewData = true;
         }
 
@@ -1419,7 +1420,7 @@
       item.bonus = Number(document.getElementById('edit-bonus').value) || 0;
       item.expiryDate = document.getElementById('edit-exp').value.trim();
 
-      localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
+      localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
       populateCompanyDropdown();
       closeEditModal();
       renderAlerts();
@@ -1442,7 +1443,7 @@
       if (confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) {
         inventory = inventory.filter(i => i.id !== id);
         delete cartMap[id];
-        localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
+        localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
         populateCompanyDropdown();
         renderAlerts();
         renderProducts();
@@ -1583,8 +1584,8 @@
         const found = inventory.find(x => x.name === it.name);
         if (found) found.quantity = Math.max(0, found.quantity - it.quantity);
       });
-      localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
-      localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
+      localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
+      localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
 
       if (shouldSave) {
         const exists = savedPharmacies.some(p => p.name.toLowerCase() === ph.toLowerCase());
@@ -1662,7 +1663,7 @@
       o.staffName = staff.trim();
       o.status = 'معتمد للتجهيز';
 
-      localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
+      localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
       closeInspectModal();
       renderOrders();
       updateReportsView();
@@ -1683,7 +1684,7 @@
       o.status = 'تم التسليم';
       o.deliveredBy = staff.trim();
 
-      localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
+      localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
       renderOrders();
       if (isAdminUnlocked) {
         updateReportsView();
@@ -1704,7 +1705,7 @@
       if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
         const ordNumber = o.orderNumber;
         ordersList.splice(idx, 1);
-        localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
+        localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
         renderOrders();
         renderAlerts();
         if (isAdminUnlocked) updateReportsView();
