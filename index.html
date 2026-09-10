@@ -1099,19 +1099,28 @@
       await loadRemoteData();
     }
 
-    async function loadRemoteData() {
+   async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
+      
+      // 1. عرض البيانات المحلية فوراً (سرعة صفرية بدون أي انتظار للنت)
+      renderAlerts();
+      renderProducts();
+      renderOrders();
+      if (isAdminUnlocked) {
+        updateReportsView();
+        renderStaffManagementView();
+      }
+
+      // 2. جلب التحديثات من جوجل شيت في الخلفية بصمت تام
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // مهلة كافية مع إلغاء التعليق
 
         const res = await fetch(API_URL, { signal: controller.signal });
         clearTimeout(timeoutId);
         const data = await res.json();
         
-        let hasNewData = false;
-
-        if (data && data.products) {
+        if (data && data.products && data.products.length > 0) {
           inventory = data.products.map(p => ({
             id: p.id,
             name: p.name,
@@ -1126,25 +1135,21 @@
             bonus: Number(p.bonus) || 0,
             expiryDate: p.expiryDate || ''
           }));
-          localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
-          hasNewData = true;
+          localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
         }
 
         if (data && Array.isArray(data.orders)) {
           ordersList = data.orders;
-          localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
-          hasNewData = true;
+          localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
         }
 
-        if (hasNewData) {
-          populateCompanyDropdown();
-          renderAlerts();
-          renderProducts();
-          renderOrders();
-          if (isAdminUnlocked) {
-            updateReportsView();
-            renderStaffManagementView();
-          }
+        populateCompanyDropdown();
+        renderAlerts();
+        renderProducts();
+        renderOrders();
+        if (isAdminUnlocked) {
+          updateReportsView();
+          renderStaffManagementView();
         }
 
         if (lbl) lbl.innerText = isAdminUnlocked ? "وضع صاحب المذخر (متصل سحابياً)" : "وضع الموظف (عرض وتجهيز)";
@@ -1152,7 +1157,6 @@
         if (lbl) lbl.innerText = "أوفلاين (الذاكرة المحلية تعمل بكفاءة)";
       }
     }
-
     function openCameraScanner() {
       document.getElementById('modal-scanner').style.display = 'flex';
       if (!html5QrScanner) { html5QrScanner = new Html5Qrcode("reader"); }
