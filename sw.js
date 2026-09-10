@@ -1,28 +1,34 @@
 const CACHE_NAME = 'samo-wms-v24';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
-];
 
+// عند التثبيت: مسح أي كاش قديم وتفعيل الإصدار الجديد فوراً
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
   self.skipWaiting();
 });
 
+// عند التفعيل: حذف جميع النسخ المخزنة القديمة نهائياً
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(keys.map((k) => { if (k !== CACHE_NAME) return caches.delete(k); }));
+      return Promise.all(
+        keys.map((k) => {
+          if (k !== CACHE_NAME) {
+            return caches.delete(k); // مسح تلقائي للذاكرة القديمة
+          }
+        })
+      );
     })
   );
   self.clients.claim();
 });
 
+// استراتيجية الجلب: جلب الملفات المحدثة من السيرفر وتجاوز الكاش العالق
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('script.google.com')) return;
-  e.respondWith(caches.match(e.request).then((res) => res || fetch(e.request)));
+  if (e.request.url.includes('script.google.com')) {
+    return; // استثناء جوجل شيت ليبقى متصلاً بالداتا سورس
+  }
+  e.respondWith(
+    fetch(e.request).catch(() => {
+      return caches.match(e.request);
+    })
+  );
 });
