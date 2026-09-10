@@ -882,7 +882,6 @@
     let cartMap = {};
     let currentFilter = 'all';
     
-    // فحص دقيق وثابت لحالة المدير في الذاكرة المحلية
     let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
     
     let currentPrintItem = null;
@@ -896,7 +895,6 @@
       populateStaffDropdown();
       updateStaffBadgeUI();
       
-      // تطبيق حالة الأمان للمدير أو الموظف عند تحميل الصفحة
       if (isAdminUnlocked) {
         unlockAdminUI(true);
       } else {
@@ -1021,9 +1019,9 @@
     }
 
     function initSystem() {
-      const localStock = localStorage.getItem('samo_inventory_v38');
+      const localStock = localStorage.getItem('samo_inventory_v39');
       if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
-      const localOrders = localStorage.getItem('samo_orders_v38');
+      const localOrders = localStorage.getItem('samo_orders_v39');
       if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
       const localPendingOrders = localStorage.getItem('samo_pending_orders');
       if (localPendingOrders) { try { pendingSyncOrders = JSON.parse(localPendingOrders); } catch(e){} }
@@ -1099,10 +1097,9 @@
       await loadRemoteData();
     }
 
-   async function loadRemoteData() {
+    async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
       
-      // 1. عرض البيانات المحلية فوراً (سرعة صفرية بدون أي انتظار للنت)
       renderAlerts();
       renderProducts();
       renderOrders();
@@ -1111,15 +1108,16 @@
         renderStaffManagementView();
       }
 
-      // 2. جلب التحديثات من جوجل شيت في الخلفية بصمت تام
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000); // مهلة كافية مع إلغاء التعليق
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         const res = await fetch(API_URL, { signal: controller.signal });
         clearTimeout(timeoutId);
         const data = await res.json();
         
+        let hasNewData = false;
+
         if (data && data.products && data.products.length > 0) {
           inventory = data.products.map(p => ({
             id: p.id,
@@ -1136,20 +1134,24 @@
             expiryDate: p.expiryDate || ''
           }));
           localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+          hasNewData = true;
         }
 
         if (data && Array.isArray(data.orders)) {
           ordersList = data.orders;
           localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+          hasNewData = true;
         }
 
-        populateCompanyDropdown();
-        renderAlerts();
-        renderProducts();
-        renderOrders();
-        if (isAdminUnlocked) {
-          updateReportsView();
-          renderStaffManagementView();
+        if (hasNewData) {
+          populateCompanyDropdown();
+          renderAlerts();
+          renderProducts();
+          renderOrders();
+          if (isAdminUnlocked) {
+            updateReportsView();
+            renderStaffManagementView();
+          }
         }
 
         if (lbl) lbl.innerText = isAdminUnlocked ? "وضع صاحب المذخر (متصل سحابياً)" : "وضع الموظف (عرض وتجهيز)";
@@ -1157,6 +1159,7 @@
         if (lbl) lbl.innerText = "أوفلاين (الذاكرة المحلية تعمل بكفاءة)";
       }
     }
+
     function openCameraScanner() {
       document.getElementById('modal-scanner').style.display = 'flex';
       if (!html5QrScanner) { html5QrScanner = new Html5Qrcode("reader"); }
@@ -1424,7 +1427,7 @@
       item.bonus = Number(document.getElementById('edit-bonus').value) || 0;
       item.expiryDate = document.getElementById('edit-exp').value.trim();
 
-      localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
+      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
       populateCompanyDropdown();
       closeEditModal();
       renderAlerts();
@@ -1447,7 +1450,7 @@
       if (confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) {
         inventory = inventory.filter(i => i.id !== id);
         delete cartMap[id];
-        localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
         populateCompanyDropdown();
         renderAlerts();
         renderProducts();
@@ -1588,8 +1591,8 @@
         const found = inventory.find(x => x.name === it.name);
         if (found) found.quantity = Math.max(0, found.quantity - it.quantity);
       });
-      localStorage.setItem('samo_inventory_v38', JSON.stringify(inventory));
-      localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
+      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
 
       if (shouldSave) {
         const exists = savedPharmacies.some(p => p.name.toLowerCase() === ph.toLowerCase());
@@ -1667,7 +1670,7 @@
       o.staffName = staff.trim();
       o.status = 'معتمد للتجهيز';
 
-      localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
       closeInspectModal();
       renderOrders();
       updateReportsView();
@@ -1688,7 +1691,7 @@
       o.status = 'تم التسليم';
       o.deliveredBy = staff.trim();
 
-      localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
       renderOrders();
       if (isAdminUnlocked) {
         updateReportsView();
@@ -1709,7 +1712,7 @@
       if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
         const ordNumber = o.orderNumber;
         ordersList.splice(idx, 1);
-        localStorage.setItem('samo_orders_v38', JSON.stringify(ordersList));
+        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
         renderOrders();
         renderAlerts();
         if (isAdminUnlocked) updateReportsView();
@@ -1747,10 +1750,7 @@
 
       document.getElementById('inv-staff-sign').innerText = `توقيع الموظف المجهز (${o.staffName || 'غير مسجل'}): ..........................`;
 
-      document.body.classList.remove('printing-barcode');
-      document.body.classList.add('printing-invoice');
       window.print();
-      document.body.classList.remove('printing-invoice');
     }
 
     let currentBarcodeData = { name: '', barcode: '', price: 0 };
@@ -1854,6 +1854,120 @@
         document.getElementById('edit-barcode').value = barcode;
       }
       openDirectBarcodeModal(name, barcode, price);
+    }
+
+    // دالة عرض سجل الطلبيات المفقودة سابقاً
+    function renderOrders() {
+      const container = document.getElementById('orders-list-container');
+      if (!container) return;
+
+      if (!ordersList || ordersList.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد قوائم صادرة مسجلة</div>`;
+        return;
+      }
+
+      container.innerHTML = ordersList.map((o, idx) => {
+        let adminAction = '';
+        let deliverBtn = '';
+
+        if (o.status === 'معتمد للتجهيز') {
+          deliverBtn = `<button class="btn" style="padding:4px 10px; font-size:11px; background:#af52de;" onclick="markOrderAsDelivered(${idx})">تسليم الطلبية ✓</button>`;
+        }
+
+        if (isAdminUnlocked) {
+          const approveBtn = (o.status === 'قيد المراجعة' || o.status === 'جديد') 
+            ? `<button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="openInspectOrderModal(${idx})">فحص واعتماد ✓</button>`
+            : `<span style="font-size:11px; color:var(--ios-green); font-weight:bold;">مجهز: ${o.staffName || 'مسؤول'}</span>`;
+          
+          adminAction = `
+            ${approveBtn}
+            ${deliverBtn}
+            <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>
+          `;
+        } else {
+          adminAction = deliverBtn;
+        }
+
+        let statusBadge = '';
+        if (o.status === 'تم التسليم') {
+          statusBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1;">تم التسليم (المسلم: ${o.deliveredBy || 'الموظف'})</span>`;
+        } else if (o.status === 'معتمد للتجهيز') {
+          statusBadge = `<span class="badge" style="background:#ecfdf5; color:#16a34a;">معتمد (المجهز: ${o.staffName})</span>`;
+        } else {
+          statusBadge = `<span class="badge" style="background:#fff7ed; color:#ea580c;">قيد المراجعة</span>`;
+        }
+
+        return `
+          <div class="prod-card">
+            <div style="display:flex; justify-content:space-between; font-weight:700;">
+              <div>${o.pharmacyName}</div>
+              <div style="color:var(--ios-blue); font-size:12px;">${o.orderNumber}</div>
+            </div>
+            <div style="font-size:11px; color:var(--ios-sub); margin-top:2px;">
+              📅 ${o.date} | 📞 ${o.phone || 'بدون هاتف'}
+            </div>
+            <div style="font-size:12px; margin-top:4px; color:#444;">
+              عدد المواد: <b>${(o.items || []).length}</b> مادة | المجهز: <b>${o.staffName || 'غير مسجل'}</b>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-weight:800;">
+              <span style="color:var(--ios-green);">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                ${statusBadge}
+                <button class="btn btn-sec" style="padding:4px 10px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
+                ${adminAction}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // دالة عرض تقارير الموظفين المفقودة سابقاً
+    function renderStaffManagementView() {
+      const container = document.getElementById('staff-report-container');
+      if (!container) return;
+
+      const staffActivityMap = {};
+      ordersList.forEach(o => {
+        const preparer = (o.staffName && o.staffName !== 'غير مسجل') ? o.staffName.trim() : 'غير مسجل';
+        const deliverer = (o.deliveredBy && o.deliveredBy.trim() !== '') ? o.deliveredBy.trim() : null;
+
+        if (!staffActivityMap[preparer]) {
+          staffActivityMap[preparer] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
+        }
+        staffActivityMap[preparer].preparedCount++;
+        staffActivityMap[preparer].totalAmountPrepared += (o.totalAmount || 0);
+
+        if (deliverer) {
+          if (!staffActivityMap[deliverer]) {
+            staffActivityMap[deliverer] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
+          }
+          staffActivityMap[deliverer].deliveredCount++;
+        }
+      });
+
+      const staffEntries = Object.entries(staffActivityMap);
+      if (staffEntries.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub);">لا توجد حركات مسجلة للموظفين بعد</div>`;
+        return;
+      }
+
+      container.innerHTML = staffEntries.map(([staffName, data]) => `
+        <div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
+          <div style="font-size: 16px; font-weight: 800; color: #111;">👤 الموظف: ${staffName}</div>
+          <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 13px;">
+            <div style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
+              📦 الطلبيات المجهزة: ${data.preparedCount} طلب
+            </div>
+            <div style="background: #ecfdf5; color: #16a34a; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
+              🚚 الطلبيات المسلمة: ${data.deliveredCount} طلب
+            </div>
+          </div>
+          <div style="font-size: 12px; color: var(--ios-sub); margin-top: 4px;">
+            إجمالي مبالغ الطلبيات التي تجهزها: <b style="color: var(--ios-green);">${data.totalAmountPrepared.toLocaleString()} د.ع</b>
+          </div>
+        </div>
+      `).join('');
     }
 
     function triggerAdmin() {
