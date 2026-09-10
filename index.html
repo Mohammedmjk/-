@@ -630,7 +630,6 @@
     </div>
   </div>
 
-  <!-- نافذة معاينة وطباعة الباركود بالنافذة المستقلة (لا تستخدم window.print العشوائي) -->
   <div id="modal-direct-barcode" class="modal-overlay">
     <div class="modal-sheet" style="max-width: 420px; text-align: center;">
       <div class="sheet-head">
@@ -655,7 +654,7 @@
 
       <div style="display: flex; gap: 8px;">
         <button class="btn" style="flex: 1; justify-content: center; padding: 14px; font-size: 15px; background: var(--ios-blue); box-shadow: 0 4px 12px rgba(0,122,255,0.3);" onclick="executeDirectThermalPrint()">
-          🖨️ فتح نافذة طباعة الباركود (صفحة واحدة)
+          🖨️ طباعة الملصق الآن (صفحة 1)
         </button>
         <button class="btn btn-sec" style="padding: 14px; font-size: 14px;" onclick="closeDirectBarcodeModal()">إغلاق</button>
       </div>
@@ -882,7 +881,10 @@
     let savedPharmacies = [];
     let cartMap = {};
     let currentFilter = 'all';
+    
+    // التحقق الصارم من حالة المدير وتثبيتها في الذاكرة المحلية
     let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
+    
     let currentPrintItem = null;
     let html5QrScanner = null;
     let currentInspectingOrderIndex = null;
@@ -893,6 +895,13 @@
     window.addEventListener('DOMContentLoaded', () => {
       populateStaffDropdown();
       updateStaffBadgeUI();
+      
+      if (isAdminUnlocked) {
+        unlockAdminUI(true);
+      } else {
+        lockAdminUI(true);
+      }
+
       initSystem();
 
       window.addEventListener('click', () => {
@@ -1011,9 +1020,9 @@
     }
 
     function initSystem() {
-      const localStock = localStorage.getItem('samo_inventory_v36');
+      const localStock = localStorage.getItem('samo_inventory_v37');
       if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
-      const localOrders = localStorage.getItem('samo_orders_v36');
+      const localOrders = localStorage.getItem('samo_orders_v37');
       if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
       const localPendingOrders = localStorage.getItem('samo_pending_orders');
       if (localPendingOrders) { try { pendingSyncOrders = JSON.parse(localPendingOrders); } catch(e){} }
@@ -1026,10 +1035,6 @@
       renderAlerts();
       renderProducts();
       renderOrders();
-
-      if (isAdminUnlocked) {
-        unlockAdminUI(true);
-      }
 
       window.addEventListener('online', () => { triggerSync(); });
       loadRemoteData();
@@ -1120,13 +1125,13 @@
             bonus: Number(p.bonus) || 0,
             expiryDate: p.expiryDate || ''
           }));
-          localStorage.setItem('samo_inventory_v36', JSON.stringify(inventory));
+          localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
           hasNewData = true;
         }
 
         if (data && Array.isArray(data.orders)) {
           ordersList = data.orders;
-          localStorage.setItem('samo_orders_v36', JSON.stringify(ordersList));
+          localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
           hasNewData = true;
         }
 
@@ -1414,7 +1419,7 @@
       item.bonus = Number(document.getElementById('edit-bonus').value) || 0;
       item.expiryDate = document.getElementById('edit-exp').value.trim();
 
-      localStorage.setItem('samo_inventory_v36', JSON.stringify(inventory));
+      localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
       populateCompanyDropdown();
       closeEditModal();
       renderAlerts();
@@ -1437,7 +1442,7 @@
       if (confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) {
         inventory = inventory.filter(i => i.id !== id);
         delete cartMap[id];
-        localStorage.setItem('samo_inventory_v36', JSON.stringify(inventory));
+        localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
         populateCompanyDropdown();
         renderAlerts();
         renderProducts();
@@ -1578,8 +1583,8 @@
         const found = inventory.find(x => x.name === it.name);
         if (found) found.quantity = Math.max(0, found.quantity - it.quantity);
       });
-      localStorage.setItem('samo_inventory_v36', JSON.stringify(inventory));
-      localStorage.setItem('samo_orders_v36', JSON.stringify(ordersList));
+      localStorage.setItem('samo_inventory_v37', JSON.stringify(inventory));
+      localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
 
       if (shouldSave) {
         const exists = savedPharmacies.some(p => p.name.toLowerCase() === ph.toLowerCase());
@@ -1657,7 +1662,7 @@
       o.staffName = staff.trim();
       o.status = 'معتمد للتجهيز';
 
-      localStorage.setItem('samo_orders_v36', JSON.stringify(ordersList));
+      localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
       closeInspectModal();
       renderOrders();
       updateReportsView();
@@ -1678,7 +1683,7 @@
       o.status = 'تم التسليم';
       o.deliveredBy = staff.trim();
 
-      localStorage.setItem('samo_orders_v36', JSON.stringify(ordersList));
+      localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
       renderOrders();
       if (isAdminUnlocked) {
         updateReportsView();
@@ -1699,7 +1704,7 @@
       if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
         const ordNumber = o.orderNumber;
         ordersList.splice(idx, 1);
-        localStorage.setItem('samo_orders_v36', JSON.stringify(ordersList));
+        localStorage.setItem('samo_orders_v37', JSON.stringify(ordersList));
         renderOrders();
         renderAlerts();
         if (isAdminUnlocked) updateReportsView();
@@ -1777,14 +1782,11 @@
       document.getElementById('modal-direct-barcode').style.display = 'none';
     }
 
-    // دالة إنشاء نافذة مستقلة (Popup Window) للطباعة الحرارية بصفحة واحدة دقيقة ومقاس مضبوط
     function executeDirectThermalPrint() {
       const orientation = document.getElementById('print-orientation-select').value;
-      
       const widthMm = orientation === 'landscape' ? '72mm' : '38mm';
       const heightMm = orientation === 'landscape' ? '38mm' : '72mm';
 
-      // فتح نافذة متصفح جديدة مستقلة تماماً للطباعة النظيفة
       const printWindow = window.open('', '_blank', 'width=400,height=300');
       
       printWindow.document.write(`
@@ -1853,15 +1855,7 @@
       if (isAdminUnlocked) {
         isAdminUnlocked = false;
         localStorage.removeItem('samo_admin_logged');
-        document.getElementById('admin-toggle-btn').innerText = "دخول المذخر";
-        document.getElementById('admin-toggle-btn').style.background = "#3a3a3c";
-        document.getElementById('conn-lbl').innerText = "وضع الموظف (عرض وتجهيز)";
-        document.getElementById('add-prod-btn').style.display = "none";
-        document.getElementById('tab-btn-staff').style.display = "none";
-        document.getElementById('tab-btn-reports').style.display = "none";
-        setMainTab('home');
-        renderProducts();
-        renderOrders();
+        lockAdminUI(false);
       } else {
         const p = prompt("الرمز السري لصاحب المذخر:");
         if (p === "admin2026") {
@@ -1887,6 +1881,19 @@
       }
       updateReportsView();
       renderStaffManagementView();
+      renderProducts();
+      renderOrders();
+    }
+
+    function lockAdminUI(isAutoLogin = false) {
+      isAdminUnlocked = false;
+      document.getElementById('admin-toggle-btn').innerText = "دخول المذخر";
+      document.getElementById('admin-toggle-btn').style.background = "#3a3a3c";
+      document.getElementById('conn-lbl').innerText = "وضع الموظف (عرض وتجهيز)";
+      document.getElementById('add-prod-btn').style.display = "none";
+      document.getElementById('tab-btn-staff').style.display = "none";
+      document.getElementById('tab-btn-reports').style.display = "none";
+      setMainTab('home');
       renderProducts();
       renderOrders();
     }
