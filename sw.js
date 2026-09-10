@@ -1,4 +1,4 @@
-const CACHE_NAME = 'samo-wms-v22';
+const CACHE_NAME = 'samo-wms-v23';
 const ASSETS = [
   './',
   './index.html',
