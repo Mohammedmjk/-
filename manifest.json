@@ -1,0 +1,21 @@
+{
+  "name": "مستودع سامو للأدوية",
+  "short_name": "سامو للأدوية",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
