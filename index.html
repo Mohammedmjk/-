@@ -544,7 +544,6 @@
         <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 11px; color: #0369a1; font-weight: 700; outline: none; cursor: pointer;">
           <option value="">اختر اسمك...</option>
         </select>
-        <button onclick="addNewStaffName()" style="background: #0369a1; color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="إضافة اسم جديد">+</button>
       </div>
       <button class="btn btn-sec" onclick="triggerSync()">تحديث</button>
       <button id="admin-toggle-btn" class="btn btn-admin" onclick="triggerAdmin()">دخول المذخر</button>
@@ -573,10 +572,6 @@
             </svg>
           </button>
         </div>
-
-        <button class="btn btn-sec" id="toggle-out-stock-btn" onclick="toggleHideOutStock()" style="font-size: 11px; padding: 10px 12px; white-space: nowrap;">
-          👁️ إخفاء النافدة
-        </button>
 
         <div class="icon-action-circle" onclick="toggleDropdown('filter-dropdown', event)" title="فلترة متقدمة">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
@@ -637,8 +632,13 @@
   <div id="view-pos" style="display: none;">
     <div class="pos-container">
       <div class="pos-left-pane">
-        <div class="search-box-rel" style="margin-bottom: 4px;">
-          <input type="text" id="pos-search-box" class="search-input" placeholder="🔍 ابحث باسم المادة أو امسح الباركود..." oninput="renderPosProducts()">
+        <div class="search-row-flex" style="margin-bottom: 4px;">
+          <div class="search-box-rel">
+            <input type="text" id="pos-search-box" class="search-input" placeholder="🔍 ابحث باسم المادة أو امسح الباركود..." oninput="renderPosProducts()">
+          </div>
+          <button class="btn btn-sec" id="pos-toggle-out-stock-btn" onclick="togglePosHideOutStock()" style="font-size: 11px; padding: 10px 12px; white-space: nowrap;">
+            👁️ إخفاء النافدة
+          </button>
         </div>
         <div class="pos-grid-items" id="pos-grid-container"></div>
       </div>
@@ -680,7 +680,7 @@
   <div id="view-staff" style="display: none; padding: 0 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <div style="font-size: 15px; font-weight: 800; color: var(--ios-blue);">إدارة الموظفين والنشاطات والتقارير:</div>
-      <button class="btn" style="background: var(--ios-green); font-size: 12px; padding: 6px 12px;" onclick="addNewStaffName()">+ إضافة موظف جديد</button>
+      <button class="btn" style="background: var(--ios-green); font-size: 12px; padding: 6px 12px;" onclick="addNewStaffNamePrompt()">+ إضافة موظف جديد</button>
     </div>
     <div id="staff-report-container" class="product-list"></div>
   </div>
@@ -990,7 +990,7 @@
     let cartMap = {};
     let posCartMap = {};
     let currentFilter = 'all';
-    let hideOutStock = false;
+    let posHideOutStock = false;
     
     let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
     
@@ -1035,8 +1035,8 @@
       }
     }
 
-    function addNewStaffName() {
-      const newName = prompt("أدخل اسم الموظف الجديد:");
+    function addNewStaffNamePrompt() {
+      const newName = prompt("أدخل اسم الموظف الجديد لتسجيله في النظام:");
       if (newName && newName.trim() !== '') {
         const trimmed = newName.trim();
         if (!staffNamesList.includes(trimmed)) {
@@ -1045,10 +1045,10 @@
           populateStaffDropdown();
           onStaffSelected(trimmed);
           if (isAdminUnlocked) renderStaffManagementView();
-          alert(`تمت إضافة الموظف "${trimmed}" بنجاح!`);
+          alert(`تمت إضافة الموظف "${trimmed}" بنجاح إلى القائمة المعتمدة!`);
         } else {
           onStaffSelected(trimmed);
-          alert(`الموظف "${trimmed}" موجود مسبقاً وتم تحديثه كمستخدم حالي.`);
+          alert(`الموظف "${trimmed}" موجود مسبقاً في القائمة.`);
         }
       }
     }
@@ -1073,15 +1073,15 @@
       }
     }
 
-    function toggleHideOutStock() {
-      hideOutStock = !hideOutStock;
-      const btn = document.getElementById('toggle-out-stock-btn');
+    function togglePosHideOutStock() {
+      posHideOutStock = !posHideOutStock;
+      const btn = document.getElementById('pos-toggle-out-stock-btn');
       if (btn) {
-        btn.innerText = hideOutStock ? "👁️ إظهار الكل" : "👁️ إخفاء النافدة";
-        btn.style.background = hideOutStock ? "#e0f2fe" : "";
-        btn.style.color = hideOutStock ? "#0369a1" : "";
+        btn.innerText = posHideOutStock ? "👁️ إظهار الكل" : "👁️ إخفاء النافدة";
+        btn.style.background = posHideOutStock ? "#e0f2fe" : "";
+        btn.style.color = posHideOutStock ? "#0369a1" : "";
       }
-      renderProducts();
+      renderPosProducts();
     }
 
     function openCameraForImage(inputId) {
@@ -1374,7 +1374,6 @@
       document.getElementById('filter-stock').value = '';
       document.getElementById('filter-company').value = '';
       currentFilter = 'all';
-      hideOutStock = false;
       renderProducts();
     }
 
@@ -1395,10 +1394,6 @@
           (i.barcode && i.barcode.includes(q)) || 
           (i.company && i.company.toLowerCase().includes(q))
         );
-      }
-
-      if (hideOutStock) {
-        list = list.filter(i => i.quantity > 0);
       }
 
       if (formFilter) {
@@ -1519,6 +1514,10 @@
         );
       }
 
+      if (posHideOutStock) {
+        list = list.filter(i => i.quantity > 0);
+      }
+
       if (list.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub); grid-column: span 2;">لا توجد مواد مطابقة</div>`;
         return;
@@ -1605,9 +1604,7 @@
       if (!ph) return alert("يرجى كتابة اسم الصيدلية المستلمة");
 
       if (!activeStaffName) {
-        activeStaffName = prompt("يرجى إدخال اسمك (الموظف المجهز) لتثبيته على الطلبية:") || 'صاحب المذخر';
-        localStorage.setItem('samo_active_staff', activeStaffName);
-        updateStaffBadgeUI();
+        return alert("يرجى اختيار اسمك (الموظف المجهز) من القائمة المنسدلة في الأعلى أولاً!");
       }
 
       const newItems = keys.map(id => {
@@ -1667,7 +1664,7 @@
       renderPosProducts();
       renderProducts();
       renderOrders();
-      alert(`تم إرسال واعتماد طلب صيدلية ${ph} بنجاح عبر نقطة البيع (POS)!`);
+      alert(`تم إرسال واعتماد طلب صيدلية ${ph} بنجاح عبر نقطة البيع (POS) بواسطة الموظف (${activeStaffName})!`);
     }
 
     function promptDirectCartQty(prodId) {
@@ -1855,9 +1852,7 @@
       if (!ph) return alert("يرجى كتابة اسم الصيدلية");
 
       if (!activeStaffName) {
-        activeStaffName = prompt("يرجى إدخال اسمك (الموظف المجهز) لتثبيته على الطلبية:") || 'موظف';
-        localStorage.setItem('samo_active_staff', activeStaffName);
-        updateStaffBadgeUI();
+        return alert("يرجى اختيار اسمك (الموظف المجهز) من القائمة المنسدلة في الأعلى أولاً!");
       }
 
       const newItems = Object.keys(cartMap).map(id => {
@@ -1967,8 +1962,10 @@
       o.items = o.items.filter(it => it.quantity > 0);
       o.totalAmount = o.items.reduce((s, it) => s + (it.price * it.quantity), 0);
 
-      const staff = activeStaffName || prompt("أدخل اسم الموظف المجهز لهذه الطلبية:") || 'مسؤول المذخر';
-      o.staffName = staff.trim();
+      if (!activeStaffName) {
+        return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمجهز معتمد للطلبية!");
+      }
+      o.staffName = activeStaffName;
       o.status = 'معتمد للتجهيز';
 
       localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
@@ -1987,10 +1984,12 @@
 
     function markOrderAsDelivered(idx) {
       const o = ordersList[idx];
-      const staff = activeStaffName || prompt("أدخل اسم الموظف الذي قام بتسليم الطلبية للصيدلية:") || 'موظف التوصيل';
+      if (!activeStaffName) {
+        return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمسلم للطلبية!");
+      }
       
       o.status = 'تم التسليم';
-      o.deliveredBy = staff.trim();
+      o.deliveredBy = activeStaffName;
 
       localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
       renderOrders();
@@ -2005,14 +2004,12 @@
         body: JSON.stringify({ action: 'new_order', order: o })
       }).catch(() => {});
 
-      alert(`تم تسجيل تسليم الطلبية بنجاح بواسطة الموظف: ${staff}`);
+      alert(`تم تسجيل تسليم الطلبية بنجاح بواسطة الموظف: ${activeStaffName}`);
     }
 
-    // دالة حذف الطلبية وإرجاع الكميات للمخزن والشيت
     function deleteOrderRecord(idx) {
       const o = ordersList[idx];
       if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟ سيتم إعادة الكميات إلى المخزن تلقائياً.`)) {
-        // إرجاع الأدوية للمخزن
         if (o.items && Array.isArray(o.items)) {
           o.items.forEach(it => {
             const prod = inventory.find(p => p.id === it.id || p.name.trim().toLowerCase() === it.name.trim().toLowerCase());
@@ -2032,7 +2029,6 @@
         renderPosProducts();
         if (isAdminUnlocked) updateReportsView();
 
-        // مزامنة التعديلات مع الشيت
         fetch(API_URL, {
           method: 'POST', mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
@@ -2282,7 +2278,7 @@
         <div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
           <div style="font-size: 16px; font-weight: 800; color: #111; display:flex; justify-content:space-between; align-items:center;">
             <span>👤 الموظف: ${staffName}</span>
-            <button class="btn" style="background:#e0f2fe; color:#0369a1; font-size:11px; padding:3px 8px;" onclick="onStaffSelected('${staffName}'); alert('تم اختيار الموظف ${staffName} كمستخدم حالي.');">اختيار كمستخدم حالي</button>
+            <button class="btn" style="background:#e0f2fe; color:#0369a1; font-size:11px; padding:3px 8px;" onclick="onStaffSelected('${staffName}'); alert('تم اختيار الموظف ${staffName} كمستخدم حالي بنجاح.');">اختيار كمستخدم حالي</button>
           </div>
           <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 13px;">
             <div style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
