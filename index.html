@@ -340,66 +340,6 @@
     .prod-orig-price { font-size: 12px; color: var(--ios-sub); text-decoration: line-through; margin-left: 6px; }
     .prod-stock-lbl { font-size: 13px; font-weight: 700; color: var(--ios-sub); }
 
-    .pos-container {
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 16px;
-      padding: 0 16px;
-    }
-    @media (max-width: 900px) {
-      .pos-container { grid-template-columns: 1fr; }
-    }
-    .pos-left-pane { display: flex; flex-direction: column; gap: 12px; }
-    .pos-right-pane {
-      background: var(--ios-card);
-      border-radius: 16px;
-      padding: 16px;
-      border: 1px solid var(--ios-border);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      height: fit-content;
-      position: sticky;
-      top: 70px;
-    }
-    .pos-grid-items {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      max-height: 70vh;
-      overflow-y: auto;
-      padding-bottom: 20px;
-    }
-    @media (max-width: 600px) {
-      .pos-grid-items { grid-template-columns: 1fr; }
-    }
-    .pos-mini-card {
-      background: var(--ios-card);
-      border: 1px solid var(--ios-border);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    }
-    .pos-mini-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
-    .pos-mini-name { font-weight: 800; font-size: 13px; color: #111; line-height: 1.2; }
-    .pos-mini-btn {
-      background: var(--ios-blue);
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      white-space: nowrap;
-    }
-    .pos-mini-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ios-sub); border-top: 0.5px solid var(--ios-border); padding-top: 6px; }
-
     .finance-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -537,7 +477,6 @@
 
   <div class="tabs-bar">
     <div class="tab-item active" id="tab-btn-home" onclick="setMainTab('home')">الأدوية والمخزن</div>
-    <div class="tab-item" id="tab-btn-pos" style="display: none;" onclick="setMainTab('pos')">🛒 نافذة نقطة البيع (POS)</div>
     <div class="tab-item" id="tab-btn-log" onclick="setMainTab('log')">سجل الصادر</div>
     <div class="tab-item" id="tab-btn-staff" style="display: none;" onclick="setMainTab('staff')">👤 تقارير الموظفين</div>
     <div class="tab-item" id="tab-btn-reports" style="display: none;" onclick="setMainTab('reports')">التقارير المالية</div>
@@ -618,52 +557,6 @@
     <div class="product-list" id="prod-list-container"></div>
   </div>
 
-  <div id="view-pos" style="display: none;">
-    <div class="pos-container">
-      <div class="pos-left-pane">
-        <div class="search-row-flex" style="margin-bottom: 4px;">
-          <div class="search-box-rel">
-            <input type="text" id="pos-search-box" class="search-input" placeholder="🔍 ابحث باسم المادة أو امسح الباركود..." oninput="renderPosProducts()">
-            <button class="camera-scan-icon-btn" onclick="openCameraScanner('pos-search-box')" title="مسح باركود بالكاميرا">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                <circle cx="12" cy="13" r="4"></circle>
-              </svg>
-            </button>
-          </div>
-          <div class="icon-action-circle" id="pos-toggle-out-stock-circle" onclick="togglePosHideOutStock()" title="إخفاء/إظهار الأدوية النافذة في POS">
-            👁️
-          </div>
-        </div>
-        <div class="pos-grid-items" id="pos-grid-container"></div>
-      </div>
-      <div class="pos-right-pane">
-        <div style="font-size: 16px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; color: var(--ios-blue);">
-          🛒 سلة تجهيز الصيدلية
-        </div>
-        <div class="form-row">
-          <label>اسم الصيدلية المستلمة:</label>
-          <input type="text" id="pos-ph-name" placeholder="مثال: صيدلية النور">
-        </div>
-        <div class="form-row">
-          <label>رقم هاتف الصيدلية:</label>
-          <input type="text" id="pos-ph-phone" placeholder="07XXXXXXXXX">
-        </div>
-        <div style="font-size: 12px; color: var(--ios-sub); margin-bottom: 10px;">
-          الموظف المجهز الحالي: <b id="pos-staff-badge" style="color: var(--ios-green);">غير مسجل</b>
-        </div>
-        <div id="pos-cart-summary" style="max-height: 220px; overflow-y: auto; margin-bottom: 12px; border-top: 0.5px solid var(--ios-border); border-bottom: 0.5px solid var(--ios-border); padding: 8px 0;">
-          <div style="text-align: center; color: var(--ios-sub); font-size: 13px; padding: 20px;">السلة فارغة حالياً</div>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 14px; font-size: 16px;">
-          <span>المجموع الكلي:</span>
-          <span id="pos-total-price" style="color: var(--ios-green);">0 د.ع</span>
-        </div>
-        <button class="btn" style="width: 100%; justify-content: center; padding: 12px; font-size: 15px;" onclick="confirmPosOrderSubmission()">إرسال الطلب للمستودع ✓</button>
-      </div>
-    </div>
-  </div>
-
   <div id="view-log" style="display: none; padding: 0 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <div style="font-size: 13px; font-weight: 700; color: var(--ios-sub);">سجل القوائم الصادرة والتواريخ:</div>
@@ -685,46 +578,25 @@
       <div class="fin-card">
         <div class="fin-title">إجمالي عدد الصيدليات</div>
         <div id="fin-ph-count" class="fin-amount" style="color: var(--ios-blue);">0 صيدلية</div>
-        <div class="mini-chart"><div class="mini-bar" style="height: 40%;"></div><div class="mini-bar" style="height: 70%;"></div><div class="mini-bar" style="height: 100%;"></div></div>
       </div>
       <div class="fin-card">
         <div class="fin-title">إجمالي عدد الطلبيات</div>
         <div id="fin-orders-count" class="fin-amount" style="color: var(--ios-purple);">0 طلب</div>
-        <div class="mini-chart"><div class="mini-bar" style="height: 60%;"></div><div class="mini-bar" style="height: 40%;"></div><div class="mini-bar" style="height: 90%;"></div></div>
       </div>
       <div class="fin-card">
         <div class="fin-title">قيمة الأدوية بالمخزن</div>
         <div id="fin-stock-val" class="fin-amount" style="color: var(--ios-green);">0 د.ع</div>
-        <div class="mini-chart"><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 70%;"></div></div>
       </div>
       <div class="fin-card">
         <div class="fin-title">إجمالي مبالغ المصروف</div>
         <div id="fin-dispatched-val" class="fin-amount" style="color: var(--ios-blue);">0 د.ع</div>
-        <div class="mini-chart"><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 100%;"></div></div>
       </div>
     </div>
 
-    <!-- صندوق تقرير الشركات المحدث (قائمة منسدلة + حقلي العدد والمبلغ) -->
+    <!-- تقرير الشركات -->
     <div class="chart-box" style="margin: 0 16px 14px; background: #fff; padding: 16px; border-radius: 12px; border: 1px solid var(--ios-border);">
       <div style="font-size: 15px; font-weight: 800; color: var(--ios-blue); margin-bottom: 10px;">🏢 تقرير الشركات المصنعة (العدد والمبالغ):</div>
-      
-      <div class="form-row" style="margin-bottom: 12px;">
-        <label>اختر اسم الشركة:</label>
-        <select id="report-company-select" onchange="onReportCompanySelected(this.value)" style="width: 100%; background: #f2f2f7; border: 1px solid var(--ios-border); border-radius: 8px; padding: 9px 12px; font-size: 13px; font-weight: 700; outline: none;">
-          <option value="">-- اختر شركة لعرض بياناتها --</option>
-        </select>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div style="background: #f8fafc; border: 1px solid var(--ios-border); padding: 12px; border-radius: 10px; text-align: center;">
-          <div style="font-size: 11px; font-weight: 600; color: var(--ios-sub);">عدد القطع (الايتمات):</div>
-          <div id="report-comp-items-qty" style="font-size: 18px; font-weight: 900; color: var(--ios-blue); margin-top: 4px;">0</div>
-        </div>
-        <div style="background: #f8fafc; border: 1px solid var(--ios-border); padding: 12px; border-radius: 10px; text-align: center;">
-          <div style="font-size: 11px; font-weight: 600; color: var(--ios-sub);">المبلغ الإجمالي:</div>
-          <div id="report-comp-total-val" style="font-size: 18px; font-weight: 900; color: var(--ios-green); margin-top: 4px;">0 د.ع</div>
-        </div>
-      </div>
+      <div id="companies-report-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
     </div>
 
     <div style="padding: 0 16px 14px; display: flex; flex-wrap: wrap; gap: 8px;">
@@ -999,17 +871,15 @@
       });
     }
 
-    const API_URL = "https://script.google.com/macros/s/AKfycbwT6X3nE6XO-RmcI_p_pSeNVpI4zATH3Hrp5oI-2bql6RLRowDZe_MH6_r99G4Di5ZN/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbyeQ_uE1iPCLQD6VN2GpEYb65IK4nanp_EvasaU2SHxPCyUW8s9xYwXE3gQMR3OzlsK/exec";
     let inventory = [];
     let ordersList = [];
     let pendingSyncOrders = [];
     let pendingSyncProducts = [];
     let savedPharmacies = [];
     let cartMap = {};
-    let posCartMap = {};
     let currentFilter = 'all';
     let hideOutStock = false;
-    let posHideOutStock = false;
     let targetSearchInputId = 'search-box';
     
     let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
@@ -1034,7 +904,6 @@
       renderAlerts();
       renderProducts();
       renderOrders();
-      renderPosProducts();
 
       if (isAdminUnlocked) {
         unlockAdminUI(true);
@@ -1098,10 +967,6 @@
       if (select && activeStaffName) {
         select.value = activeStaffName;
       }
-      const posBadge = document.getElementById('pos-staff-badge');
-      if (posBadge) {
-        posBadge.innerText = activeStaffName || 'غير مسجل';
-      }
     }
 
     function toggleHideOutStock() {
@@ -1112,16 +977,6 @@
         circle.style.borderColor = hideOutStock ? "var(--ios-blue)" : "#d1d1d6";
       }
       renderProducts();
-    }
-
-    function togglePosHideOutStock() {
-      posHideOutStock = !posHideOutStock;
-      const circle = document.getElementById('pos-toggle-out-stock-circle');
-      if (circle) {
-        circle.style.background = posHideOutStock ? "#e0f2fe" : "#ffffff";
-        circle.style.borderColor = posHideOutStock ? "var(--ios-blue)" : "#d1d1d6";
-      }
-      renderPosProducts();
     }
 
     function openCameraScanner(inputId) {
@@ -1137,8 +992,7 @@
           const inputElem = document.getElementById(targetSearchInputId);
           if (inputElem) {
             inputElem.value = decodedText;
-            if (targetSearchInputId === 'pos-search-box') renderPosProducts();
-            else renderProducts();
+            renderProducts();
           }
           closeCameraScanner();
         },
@@ -1236,7 +1090,6 @@
       renderAlerts();
       renderProducts();
       renderOrders();
-      renderPosProducts();
 
       window.addEventListener('online', () => { triggerSync(); });
       loadRemoteData();
@@ -1306,7 +1159,6 @@
       renderAlerts();
       renderProducts();
       renderOrders();
-      renderPosProducts();
       if (isAdminUnlocked) {
         updateReportsView();
         renderStaffManagementView();
@@ -1352,7 +1204,6 @@
           renderAlerts();
           renderProducts();
           renderOrders();
-          renderPosProducts();
           if (isAdminUnlocked) {
             updateReportsView();
             renderStaffManagementView();
@@ -1547,336 +1398,6 @@
       }).join('');
 
       updateBadgeDot();
-    }
-
-    function renderPosProducts() {
-      const container = document.getElementById('pos-grid-container');
-      if (!container) return;
-      const q = document.getElementById('pos-search-box') ? document.getElementById('pos-search-box').value.trim().toLowerCase() : '';
-
-      let list = inventory;
-      if (q) {
-        list = list.filter(i => 
-          i.name.toLowerCase().includes(q) || 
-          (i.barcode && i.barcode.includes(q)) || 
-          (i.company && i.company.toLowerCase().includes(q))
-        );
-      }
-
-      if (posHideOutStock) {
-        list = list.filter(i => i.quantity > 0);
-      }
-
-      if (list.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub); grid-column: span 2;">لا توجد مواد مطابقة</div>`;
-        return;
-      }
-
-      container.innerHTML = list.map(item => {
-        const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
-        const isOut = item.quantity <= 0;
-
-        return `
-          <div class="pos-mini-card">
-            <div class="pos-mini-card-top">
-              <div class="pos-mini-name">${item.name}</div>
-              <button class="pos-mini-btn" onclick="modifyPosCart('${item.id}', 1)" ${isOut ? 'disabled style="background:#ccc;"' : ''}>+ إضافة</button>
-            </div>
-            <div class="pos-mini-bottom">
-              <span style="color:var(--ios-green); font-weight:800;">${netPrice.toLocaleString()} د.ع</span>
-              <span>المتوفر: ${item.quantity}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      renderPosCartSummary();
-    }
-
-    function modifyPosCart(prodId, delta) {
-      const prod = inventory.find(i => i.id === prodId);
-      if (!prod) return;
-      const cur = posCartMap[prodId] || 0;
-      const next = cur + delta;
-      if (next <= 0) { delete posCartMap[prodId]; }
-      else if (next <= prod.quantity) { posCartMap[prodId] = next; }
-      else { alert("الكمية المطلوبة تتجاوز المتوفر بالمخزن!"); }
-      renderPosCartSummary();
-    }
-
-    function renderPosCartSummary() {
-      const container = document.getElementById('pos-cart-summary');
-      if (!container) return;
-      const keys = Object.keys(posCartMap);
-
-      if (keys.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: var(--ios-sub); font-size: 13px; padding: 20px;">السلة فارغة حالياً</div>`;
-        document.getElementById('pos-total-price').innerText = '0 د.ع';
-        return;
-      }
-
-      let total = 0;
-      container.innerHTML = keys.map(id => {
-        const item = inventory.find(i => i.id === id);
-        const qty = posCartMap[id];
-        const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
-        const sub = netPrice * qty;
-        total += sub;
-
-        return `
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px solid #eee; font-size:12px;">
-            <div style="flex:1;"><b>${item.name}</b><br><span style="color:var(--ios-sub);">${netPrice.toLocaleString()} د.ع</span></div>
-            <div style="display:flex; align-items:center; gap:4px;">
-              <button class="counter-btn" style="width:22px; height:22px; font-size:12px;" onclick="modifyPosCart('${id}', -1)">-</button>
-              <span style="font-weight:800; min-width:20px; text-align:center;">${qty}</span>
-              <button class="counter-btn" style="width:22px; height:22px; font-size:12px;" onclick="modifyPosCart('${id}', 1)">+</button>
-              <button class="btn btn-danger" style="padding:2px 5px; font-size:9px;" onclick="deletePosCartItem('${id}')">حذف</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      document.getElementById('pos-total-price').innerText = total.toLocaleString() + ' د.ع';
-    }
-
-    function deletePosCartItem(id) {
-      delete posCartMap[id];
-      renderPosCartSummary();
-    }
-
-    async function confirmPosOrderSubmission() {
-      const ph = document.getElementById('pos-ph-name').value.trim();
-      const phone = document.getElementById('pos-ph-phone').value.trim();
-      const keys = Object.keys(posCartMap);
-
-      if (keys.length === 0) return alert("السلة فارغة!");
-      if (!ph) return alert("يرجى كتابة اسم الصيدلية المستلمة");
-
-      if (!activeStaffName) {
-        return alert("يرجى اختيار اسمك (الموظف المجهز) من قائمة المستخدمين في أعلى الشاشة أولاً!");
-      }
-
-      const newItems = keys.map(id => {
-        const p = inventory.find(i => i.id === id);
-        const net = p.bonus > 0 ? Math.round(p.price * (1 - (p.bonus / 100))) : p.price;
-        return {
-          id: p.id, name: p.name, form: smartDetectForm(p.name, p.form), barcode: p.barcode,
-          expiryDate: p.expiryDate || '—', quantity: posCartMap[id], price: net
-        };
-      });
-
-      const now = new Date();
-      const formattedDate = now.toLocaleDateString('ar-IQ', {
-        year: 'numeric', month: 'numeric', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: true
-      });
-
-      const targetOrder = {
-        orderNumber: 'POS-' + Math.floor(1000 + Math.random() * 9000),
-        pharmacyName: ph, phone: phone,
-        totalAmount: newItems.reduce((s, x) => s + (x.price * x.quantity), 0),
-        status: 'معتمد للتجهيز',
-        date: formattedDate, 
-        staffName: activeStaffName,
-        deliveredBy: '',
-        items: newItems
-      };
-
-      ordersList.unshift(targetOrder);
-
-      newItems.forEach(it => {
-        const found = inventory.find(x => x.name === it.name);
-        if (found) found.quantity = Math.max(0, found.quantity - it.quantity);
-      });
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-
-      if (navigator.onLine) {
-        try {
-          await fetch(API_URL, {
-            method: 'POST', mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'new_order', order: targetOrder })
-          });
-        } catch(e) {
-          pendingSyncOrders.push(targetOrder);
-          localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
-        }
-      } else {
-        pendingSyncOrders.push(targetOrder);
-        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
-      }
-
-      posCartMap = {};
-      document.getElementById('pos-ph-name').value = '';
-      document.getElementById('pos-ph-phone').value = '';
-      renderPosProducts();
-      renderProducts();
-      renderOrders();
-      alert(`تم إرسال واعتماد طلب صيدلية ${ph} بنجاح عبر نقطة البيع (POS) بواسطة المستخدم (${activeStaffName})!`);
-      setMainTab('log');
-    }
-
-    function promptDirectCartQty(prodId) {
-      const prod = inventory.find(i => i.id === prodId);
-      if (!prod) return;
-      const current = cartMap[prodId] || 0;
-      const val = prompt(`أدخل العدد المطلوب لدواء "${prod.name}" (المتوفر: ${prod.quantity}):`, current);
-      if (val !== null) {
-        const num = parseInt(val, 10);
-        if (!isNaN(num) && num >= 0) {
-          if (num === 0) {
-            delete cartMap[prodId];
-          } else if (num <= prod.quantity) {
-            cartMap[prodId] = num;
-          } else {
-            alert(`الكمية المطلوبة أكبر من المتوفر في المخزن (${prod.quantity})!`);
-          }
-          renderProducts();
-        }
-      }
-    }
-
-    function openAddModal() {
-      document.getElementById('in-name').value = '';
-      document.getElementById('in-image').value = '';
-      document.getElementById('in-company').value = '';
-      document.getElementById('in-qty').value = '10';
-      document.getElementById('in-min-qty').value = '5';
-      document.getElementById('in-price').value = '5000';
-      document.getElementById('in-bonus').value = '0';
-      document.getElementById('in-exp').value = '2027-12';
-      document.getElementById('in-barcode').value = '880' + Math.floor(10000000 + Math.random() * 90000000);
-      calcBonusNet();
-      document.getElementById('modal-add-item').style.display = 'flex';
-    }
-
-    function closeAddModal() {
-      document.getElementById('modal-add-item').style.display = 'none';
-    }
-
-    function calcBonusNet() {
-      const price = Number(document.getElementById('in-price').value) || 0;
-      const bonus = Number(document.getElementById('in-bonus').value) || 0;
-      const net = bonus > 0 ? Math.round(price * (1 - (bonus / 100))) : price;
-      const hint = document.getElementById('bonus-hint');
-      if (hint) hint.innerText = `السعر الفعلي: ${net.toLocaleString()} د.ع`;
-    }
-
-    function generateBarcodeField(fieldId) {
-      const code = "880" + Math.floor(10000000 + Math.random() * 90000000);
-      document.getElementById(fieldId).value = code;
-    }
-
-    function saveNewMedicine() {
-      const name = document.getElementById('in-name').value.trim();
-      if (!name) return alert("يرجى كتابة اسم المادة الدوائية");
-
-      const newItem = {
-        id: 'PROD-' + Math.floor(1000 + Math.random() * 9000),
-        name: name,
-        image: document.getElementById('in-image').value.trim(),
-        company: document.getElementById('in-company').value.trim(),
-        form: smartDetectForm(name, document.getElementById('in-form').value),
-        barcode: document.getElementById('in-barcode').value.trim() || ("880" + Math.floor(10000000 + Math.random() * 90000000)),
-        quantity: Number(document.getElementById('in-qty').value) || 0,
-        minQty: Number(document.getElementById('in-min-qty').value) || 5,
-        price: Number(document.getElementById('in-price').value) || 0,
-        bonus: Number(document.getElementById('in-bonus').value) || 0,
-        expiryDate: document.getElementById('in-exp').value.trim()
-      };
-
-      inventory.unshift(newItem);
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      closeAddModal();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-      if (isAdminUnlocked) updateReportsView();
-
-      if (navigator.onLine) {
-        fetch(API_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'add_product', product: newItem })
-        }).catch(() => {});
-      } else {
-        pendingSyncProducts.push(newItem);
-        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
-      }
-
-      alert(`تم إضافة المادة "${newItem.name}" بنجاح وتزامنها مع النظام!`);
-    }
-
-    function openEditItemModal(id) {
-      const item = inventory.find(i => i.id === id);
-      if (!item) return;
-      document.getElementById('edit-prod-id').value = item.id;
-      document.getElementById('edit-name').value = item.name;
-      document.getElementById('edit-image').value = item.image || '';
-      document.getElementById('edit-company').value = item.company || '';
-      document.getElementById('edit-form').value = item.form || 'Tablet';
-      document.getElementById('edit-barcode').value = item.barcode || '';
-      document.getElementById('edit-qty').value = item.quantity;
-      document.getElementById('edit-min-qty').value = item.minQty || 5;
-      document.getElementById('edit-price').value = item.price;
-      document.getElementById('edit-bonus').value = item.bonus || 0;
-      document.getElementById('edit-exp').value = item.expiryDate || '';
-      document.getElementById('modal-edit-item').style.display = 'flex';
-    }
-    function closeEditModal() { document.getElementById('modal-edit-item').style.display = 'none'; }
-
-    function saveEditedMedicine() {
-      const id = document.getElementById('edit-prod-id').value;
-      const item = inventory.find(i => i.id === id);
-      if (!item) return;
-
-      item.name = document.getElementById('edit-name').value.trim();
-      item.image = document.getElementById('edit-image').value.trim();
-      item.company = document.getElementById('edit-company').value.trim();
-      const rawForm = document.getElementById('edit-form').value.trim();
-      item.form = smartDetectForm(item.name, rawForm);
-      item.barcode = document.getElementById('edit-barcode').value.trim();
-      item.quantity = Number(document.getElementById('edit-qty').value) || 0;
-      item.minQty = Number(document.getElementById('edit-min-qty').value) || 5;
-      item.price = Number(document.getElementById('edit-price').value) || 0;
-      item.bonus = Number(document.getElementById('edit-bonus').value) || 0;
-      item.expiryDate = document.getElementById('edit-exp').value.trim();
-
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      closeEditModal();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-      updateReportsView();
-
-      fetch(API_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add_product', product: item })
-      }).catch(() => {});
-
-      alert("تم تحديث وتعديل بيانات المادة بنجاح وتزامنها مع الشيت!");
-    }
-
-    function deleteMedicine(id) {
-      const item = inventory.find(i => i.id === id);
-      if (!item) return;
-
-      if (confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) {
-        inventory = inventory.filter(i => i.id !== id);
-        delete cartMap[id];
-        delete posCartMap[id];
-        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-        populateCompanyDropdown();
-        renderAlerts();
-        renderProducts();
-        renderPosProducts();
-        if (isAdminUnlocked) updateReportsView();
-        alert(`تم حذف دواء ${item.name} بنجاح.`);
-      }
     }
 
     function modifyCartQty(prodId, delta) {
@@ -2148,7 +1669,6 @@
         renderOrders();
         renderAlerts();
         renderProducts();
-        renderPosProducts();
         if (isAdminUnlocked) updateReportsView();
 
         fetch(API_URL, {
@@ -2318,40 +1838,6 @@
         .filter(o => o.status === 'معتمد للتجهيز' || o.status === 'تم التسليم')
         .reduce((s, o) => s + (o.totalAmount || 0), 0);
       document.getElementById('fin-dispatched-val').innerText = dispatchedVal.toLocaleString() + ' د.ع';
-
-      populateReportCompanyDropdown();
-    }
-
-    function populateReportCompanyDropdown() {
-      const select = document.getElementById('report-company-select');
-      if (!select) return;
-      const set = new Map();
-      inventory.forEach(p => {
-        const c = (p.company || '').trim();
-        if (c) set.set(c.toLowerCase(), c);
-      });
-      const arr = Array.from(set.values()).sort((a,b) => a.localeCompare(b, 'ar'));
-      select.innerHTML = '<option value="">-- اختر شركة لعرض بياناتها --</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
-      document.getElementById('report-comp-items-qty').innerText = '0';
-      document.getElementById('report-comp-total-val').innerText = '0 د.ع';
-    }
-
-    function onReportCompanySelected(compName) {
-      if (!compName) {
-        document.getElementById('report-comp-items-qty').innerText = '0';
-        document.getElementById('report-comp-total-val').innerText = '0 د.ع';
-        return;
-      }
-      let totalQty = 0;
-      let totalVal = 0;
-      inventory.forEach(p => {
-        if ((p.company || '').trim().toLowerCase() === compName.toLowerCase()) {
-          totalQty += Number(p.quantity) || 0;
-          totalVal += (Number(p.quantity) || 0) * (Number(p.price) || 0);
-        }
-      });
-      document.getElementById('report-comp-items-qty').innerText = totalQty.toLocaleString() + ' قطعة';
-      document.getElementById('report-comp-total-val').innerText = totalVal.toLocaleString() + ' د.ع';
     }
 
     function exportInventoryCSV() {
@@ -2426,15 +1912,11 @@
 
     function setMainTab(t) {
       document.getElementById('view-home').style.display = t === 'home' ? 'block' : 'none';
-      document.getElementById('view-pos').style.display = t === 'pos' ? 'block' : 'none';
       document.getElementById('view-log').style.display = t === 'log' ? 'block' : 'none';
       document.getElementById('view-staff').style.display = t === 'staff' ? 'block' : 'none';
       document.getElementById('view-reports').style.display = t === 'reports' ? 'block' : 'none';
 
       document.getElementById('tab-btn-home').classList.toggle('active', t === 'home');
-      if (document.getElementById('tab-btn-pos')) {
-        document.getElementById('tab-btn-pos').classList.toggle('active', t === 'pos');
-      }
       document.getElementById('tab-btn-log').classList.toggle('active', t === 'log');
       if (document.getElementById('tab-btn-staff')) {
         document.getElementById('tab-btn-staff').classList.toggle('active', t === 'staff');
@@ -2445,7 +1927,6 @@
 
       if (t === 'reports' && isAdminUnlocked) updateReportsView();
       if (t === 'staff' && isAdminUnlocked) renderStaffManagementView();
-      if (t === 'pos' && isAdminUnlocked) renderPosProducts();
       if (t === 'log') { renderOrders(); triggerSync(); }
     }
   </script>
