@@ -718,6 +718,12 @@
       </div>
     </div>
 
+    <!-- تقرير إحصائيات الشركات الذكي -->
+    <div class="prod-card" style="margin: 0 16px 14px;">
+      <div style="font-size: 15px; font-weight: 800; margin-bottom: 10px; color: var(--ios-blue);">📊 تقرير الشركات (عدد المواد وإجمالي المبالغ):</div>
+      <div id="company-share-report" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </div>
+
     <div style="padding: 0 16px 14px; display: flex; flex-wrap: wrap; gap: 8px;">
       <button class="btn" style="background: #107c41;" onclick="exportInventoryCSV()">📊 تصدير المخزون الكامل</button>
       <button class="btn" style="background: #d97706;" onclick="exportNearExpiryCSV()">⏳ تصدير قريبة النفاذ</button>
@@ -1192,13 +1198,30 @@
       return rawForm || 'Tablet';
     }
 
+    // استخراج اسم الشركة بذكاء من اسم الدواء (مثل MICRO أو Abdiibrahim)
+    function smartDetectCompany(name, rawCompany) {
+      if (rawCompany && rawCompany.trim() !== '' && rawCompany.toLowerCase() !== 'undefined') {
+        return rawCompany.trim();
+      }
+      if (!name) return 'أخرى';
+      const clean = name.trim();
+      const parts = clean.split(/\s+/);
+      if (parts.length > 0) {
+        const firstWord = parts[0];
+        if (firstWord.length > 2 && !/^\d+$/.test(firstWord)) {
+          return firstWord;
+        }
+      }
+      return 'أخرى';
+    }
+
     function checkExpiryStatus(expStr) {
       if (!expStr) return 'valid';
       const parts = expStr.split(/[-/]/);
       if (parts.length < 2) return 'valid';
       const year = parseInt(parts[0]);
       const month = parseInt(parts[1]) - 1;
-       
+      
       const expDate = new Date(year, month, 1);
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1223,6 +1246,8 @@
       const localPhs = localStorage.getItem('samo_saved_phs');
       if (localPhs) { try { savedPharmacies = JSON.parse(localPhs); } catch(e){} }
 
+      inventory.forEach(p => { p.company = smartDetectCompany(p.name, p.company); });
+
       populateCompanyDropdown();
       renderAlerts();
       renderProducts();
@@ -1239,7 +1264,7 @@
       const companySet = new Map();
 
       inventory.forEach(p => {
-        const raw = (p.company || '').trim();
+        const raw = smartDetectCompany(p.name, p.company);
         if (raw) {
           const cleanKey = raw.toLowerCase();
           if (!companySet.has(cleanKey)) {
@@ -1249,7 +1274,7 @@
       });
 
       const sortedCompanies = Array.from(companySet.values()).sort((a, b) => a.localeCompare(b, 'ar'));
-       
+      
       select.innerHTML = '<option value="">-- جميع الشركات --</option>' +
         sortedCompanies.map(c => `<option value="${c}">${c}</option>`).join('');
     }
@@ -1257,52 +1282,11 @@
     async function triggerSync() {
       const lbl = document.getElementById('conn-lbl');
       if (lbl) lbl.innerText = "جاري مزامنة السحابة...";
-
-      if (pendingSyncProducts.length > 0) {
-        const toSyncProds = [...pendingSyncProducts];
-        for (let p of toSyncProds) {
-          try {
-            await fetch(API_URL, {
-              method: 'POST', mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'add_product', product: p })
-            });
-            pendingSyncProducts = pendingSyncProducts.filter(x => x.id !== p.id);
-          } catch(e){ break; }
-        }
-        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
-      }
-
-      if (pendingSyncOrders.length > 0) {
-        const toSyncOrders = [...pendingSyncOrders];
-        for (let o of toSyncOrders) {
-          try {
-            await fetch(API_URL, {
-              method: 'POST', mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'new_order', order: o })
-            });
-            pendingSyncOrders = pendingSyncOrders.filter(x => x.orderNumber !== o.orderNumber);
-          } catch(err) { break; }
-        }
-        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
-      }
-
       await loadRemoteData();
     }
 
     async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
-       
-      renderAlerts();
-      renderProducts();
-      renderOrders();
-      renderPosProducts();
-      if (isAdminUnlocked) {
-        updateReportsView();
-        renderStaffManagementView();
-      }
-
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -1310,7 +1294,7 @@
         const res = await fetch(API_URL, { signal: controller.signal });
         clearTimeout(timeoutId);
         const data = await res.json();
-         
+        
         let hasNewData = false;
 
         if (data && data.products && data.products.length > 0) {
@@ -1318,7 +1302,7 @@
             id: p.id,
             name: p.name,
             image: p.image || '',
-            company: p.company || '',
+            company: smartDetectCompany(p.name, p.company),
             form: smartDetectForm(p.name, p.form),
             barcode: p.barcode || '',
             quantity: Number(p.quantity) || 0,
@@ -1369,13 +1353,6 @@
       });
 
       let html = '';
-      const totalPending = pendingSyncOrders.length + pendingSyncProducts.length;
-      if (totalPending > 0) {
-        html += `<div class="alert-strip alert-sync" onclick="triggerSync()">
-          <span>⏳ يوجد (${totalPending}) بيانات مسجلة بالأوفلاين ستصل للشيت فور توفر النت.</span>
-          <span style="font-size:11px;">مزامنة &larr;</span>
-        </div>`;
-      }
       if (expiredCount > 0) {
         html += `<div class="alert-strip alert-expired" onclick="setExpiryFilter('expired')">
           <span>⚠️ يوجد ${expiredCount} مادة منتهية الصلاحية بالمخزن!</span>
@@ -1451,7 +1428,7 @@
       }
 
       if (companyFilter) {
-        list = list.filter(i => (i.company || '').trim().toLowerCase() === companyFilter.trim().toLowerCase());
+        list = list.filter(i => smartDetectCompany(i.name, i.company).trim().toLowerCase() === companyFilter.trim().toLowerCase());
       }
 
       if (currentFilter === 'shortage') list = list.filter(i => i.quantity <= (i.minQty || 0));
@@ -1467,6 +1444,7 @@
         const expStatus = checkExpiryStatus(item.expiryDate);
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
         const detectedForm = smartDetectForm(item.name, item.form);
+        const detectedCompany = smartDetectCompany(item.name, item.company);
 
         let cartActionHtml = '';
         if (isOutOfStock) {
@@ -1514,7 +1492,7 @@
                 <div class="prod-name">${item.name}</div>
                 <div class="prod-sub-info">
                   <span class="badge badge-form">${detectedForm}</span>
-                  ${item.company ? `<span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${item.company}</span>` : ''}
+                  <span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${detectedCompany}</span>
                   ${expBadgeHtml}
                   ${item.bonus > 0 ? `<span class="badge" style="background:#e8f5e9; color:#2e7d32;">بونص ${item.bonus}%</span>` : ''}
                 </div>
@@ -1689,13 +1667,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'new_order', order: targetOrder })
           });
-        } catch(e) {
-          pendingSyncOrders.push(targetOrder);
-          localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
-        }
-      } else {
-        pendingSyncOrders.push(targetOrder);
-        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
+        } catch(e) {}
       }
 
       posCartMap = {};
@@ -1727,7 +1699,7 @@
       }
     }
 
-    // تم التأكد من تعريف الدالة لفتح نافذة إضافة مادة جديدة بنجاح تام
+    // تفعيل فتح نافذة الإضافة بدقة
     function openAddModal() {
       document.getElementById('in-name').value = '';
       document.getElementById('in-image').value = '';
@@ -1763,11 +1735,14 @@
       const name = document.getElementById('in-name').value.trim();
       if (!name) return alert("يرجى كتابة اسم المادة الدوائية");
 
+      const compInput = document.getElementById('in-company').value.trim();
+      const detectedComp = smartDetectCompany(name, compInput);
+
       const newItem = {
         id: 'PROD-' + Math.floor(1000 + Math.random() * 9000),
         name: name,
         image: document.getElementById('in-image').value.trim(),
-        company: document.getElementById('in-company').value.trim(),
+        company: detectedComp,
         form: smartDetectForm(name, document.getElementById('in-form').value),
         barcode: document.getElementById('in-barcode').value.trim() || ("880" + Math.floor(10000000 + Math.random() * 90000000)),
         quantity: Number(document.getElementById('in-qty').value) || 0,
@@ -1825,7 +1800,8 @@
 
       item.name = document.getElementById('edit-name').value.trim();
       item.image = document.getElementById('edit-image').value.trim();
-      item.company = document.getElementById('edit-company').value.trim();
+      const rawComp = document.getElementById('edit-company').value.trim();
+      item.company = smartDetectCompany(item.name, rawComp);
       const rawForm = document.getElementById('edit-form').value.trim();
       item.form = smartDetectForm(item.name, rawForm);
       item.barcode = document.getElementById('edit-barcode').value.trim();
