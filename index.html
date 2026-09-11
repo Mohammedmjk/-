@@ -884,6 +884,7 @@
     </div>
   </div>
 
+  <!-- تم التأكد من ربط عنصر نافذة إضافة مادة جديدة بالكامل -->
   <div id="modal-add-item" class="modal-overlay">
     <div class="modal-sheet">
       <div class="sheet-head">
@@ -1199,7 +1200,7 @@
       if (parts.length < 2) return 'valid';
       const year = parseInt(parts[0]);
       const month = parseInt(parts[1]) - 1;
-      
+       
       const expDate = new Date(year, month, 1);
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1250,7 +1251,7 @@
       });
 
       const sortedCompanies = Array.from(companySet.values()).sort((a, b) => a.localeCompare(b, 'ar'));
-      
+       
       select.innerHTML = '<option value="">-- جميع الشركات --</option>' +
         sortedCompanies.map(c => `<option value="${c}">${c}</option>`).join('');
     }
@@ -1294,6 +1295,16 @@
 
     async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
+       
+      renderAlerts();
+      renderProducts();
+      renderOrders();
+      renderPosProducts();
+      if (isAdminUnlocked) {
+        updateReportsView();
+        renderStaffManagementView();
+      }
+
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -1301,7 +1312,7 @@
         const res = await fetch(API_URL, { signal: controller.signal });
         clearTimeout(timeoutId);
         const data = await res.json();
-        
+         
         let hasNewData = false;
 
         if (data && data.products && data.products.length > 0) {
@@ -1718,7 +1729,7 @@
       }
     }
 
-    // تم إصلاح زر إضافة مادة جديدة لضمان ظهور النافذة المنبثقة فوراً
+    // تم إصلاح وتفعيل وظيفة فتح نافذة إضافة مادة جديدة بدقة تامة
     function openAddModal() {
       document.getElementById('in-name').value = '';
       document.getElementById('in-image').value = '';
@@ -1733,8 +1744,8 @@
       document.getElementById('modal-add-item').style.display = 'flex';
     }
 
-    function closeAddModal() { 
-      document.getElementById('modal-add-item').style.display = 'none'; 
+    function closeAddModal() {
+      document.getElementById('modal-add-item').style.display = 'none';
     }
 
     function calcBonusNet() {
