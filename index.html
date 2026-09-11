@@ -1017,13 +1017,24 @@
       populateStaffDropdown();
       updateStaffBadgeUI();
       
+      const localStock = localStorage.getItem('samo_inventory_v39');
+      if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
+      const localOrders = localStorage.getItem('samo_orders_v39');
+      if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
+
+      populateCompanyDropdown();
+      renderAlerts();
+      renderProducts();
+      renderOrders();
+      renderPosProducts();
+
       if (isAdminUnlocked) {
         unlockAdminUI(true);
       } else {
         lockAdminUI(true);
       }
 
-      initSystem();
+      loadRemoteData();
 
       window.addEventListener('click', () => {
         document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
@@ -1033,7 +1044,7 @@
     function populateStaffDropdown() {
       const select = document.getElementById('staff-name-select');
       if (!select) return;
-      select.innerHTML = '<option value="">اختر المستخدم...</option>' +
+      select.innerHTML = '<option value="">اختر...</option>' +
         staffNamesList.map(name => `<option value="${name}" ${name === activeStaffName ? 'selected' : ''}>${name}</option>`).join('');
     }
 
@@ -1283,16 +1294,6 @@
 
     async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
-      
-      renderAlerts();
-      renderProducts();
-      renderOrders();
-      renderPosProducts();
-      if (isAdminUnlocked) {
-        updateReportsView();
-        renderStaffManagementView();
-      }
-
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -1717,6 +1718,79 @@
       }
     }
 
+    // تم إصلاح زر إضافة مادة جديدة لضمان ظهور النافذة المنبثقة فوراً
+    function openAddModal() {
+      document.getElementById('in-name').value = '';
+      document.getElementById('in-image').value = '';
+      document.getElementById('in-company').value = '';
+      document.getElementById('in-qty').value = '10';
+      document.getElementById('in-min-qty').value = '5';
+      document.getElementById('in-price').value = '5000';
+      document.getElementById('in-bonus').value = '0';
+      document.getElementById('in-exp').value = '2027-12';
+      document.getElementById('in-barcode').value = '880' + Math.floor(10000000 + Math.random() * 90000000);
+      calcBonusNet();
+      document.getElementById('modal-add-item').style.display = 'flex';
+    }
+
+    function closeAddModal() { 
+      document.getElementById('modal-add-item').style.display = 'none'; 
+    }
+
+    function calcBonusNet() {
+      const price = Number(document.getElementById('in-price').value) || 0;
+      const bonus = Number(document.getElementById('in-bonus').value) || 0;
+      const net = bonus > 0 ? Math.round(price * (1 - (bonus / 100))) : price;
+      const hint = document.getElementById('bonus-hint');
+      if (hint) hint.innerText = `السعر الفعلي: ${net.toLocaleString()} د.ع`;
+    }
+
+    function generateBarcodeField(fieldId) {
+      const code = "880" + Math.floor(10000000 + Math.random() * 90000000);
+      document.getElementById(fieldId).value = code;
+    }
+
+    function saveNewMedicine() {
+      const name = document.getElementById('in-name').value.trim();
+      if (!name) return alert("يرجى كتابة اسم المادة الدوائية");
+
+      const newItem = {
+        id: 'PROD-' + Math.floor(1000 + Math.random() * 9000),
+        name: name,
+        image: document.getElementById('in-image').value.trim(),
+        company: document.getElementById('in-company').value.trim(),
+        form: smartDetectForm(name, document.getElementById('in-form').value),
+        barcode: document.getElementById('in-barcode').value.trim() || ("880" + Math.floor(10000000 + Math.random() * 90000000)),
+        quantity: Number(document.getElementById('in-qty').value) || 0,
+        minQty: Number(document.getElementById('in-min-qty').value) || 5,
+        price: Number(document.getElementById('in-price').value) || 0,
+        bonus: Number(document.getElementById('in-bonus').value) || 0,
+        expiryDate: document.getElementById('in-exp').value.trim()
+      };
+
+      inventory.unshift(newItem);
+      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+      populateCompanyDropdown();
+      closeAddModal();
+      renderAlerts();
+      renderProducts();
+      renderPosProducts();
+      if (isAdminUnlocked) updateReportsView();
+
+      if (navigator.onLine) {
+        fetch(API_URL, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add_product', product: newItem })
+        }).catch(() => {});
+      } else {
+        pendingSyncProducts.push(newItem);
+        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
+      }
+
+      alert(`تم إضافة المادة "${newItem.name}" بنجاح وتزامنها مع النظام!`);
+    }
+
     function openEditItemModal(id) {
       const item = inventory.find(i => i.id === id);
       if (!item) return;
@@ -1956,7 +2030,7 @@
       currentInspectingOrderIndex = idx;
       const o = ordersList[idx];
       document.getElementById('inspect-modal-title').innerText = `فحص وتعديل الطلبية (${o.orderNumber}) - ${o.pharmacyName}`;
-      
+       
       const box = document.getElementById('inspect-order-items-box');
       box.innerHTML = (o.items || []).map((it, i) => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #eee; font-size:13px;">
@@ -2017,7 +2091,7 @@
       if (!activeStaffName) {
         return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمسلم للطلبية!");
       }
-      
+       
       o.status = 'تم التسليم';
       o.deliveredBy = activeStaffName;
 
@@ -2052,7 +2126,7 @@
 
         ordersList.splice(idx, 1);
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-        
+         
         renderOrders();
         renderAlerts();
         renderProducts();
@@ -2107,11 +2181,11 @@
 
     function openDirectBarcodeModal(name, barcode, price) {
       currentBarcodeData = { name, barcode: barcode || ("880" + Math.floor(10000000 + Math.random() * 90000000)), price };
-      
+       
       document.getElementById('prev-barcode-name').innerText = currentBarcodeData.name;
       document.getElementById('prev-barcode-num').innerText = currentBarcodeData.barcode;
       document.getElementById('prev-barcode-price').innerText = `السعر: ${Number(currentBarcodeData.price).toLocaleString()} د.ع`;
-      
+       
       document.getElementById('prev-barcode-svg').innerHTML = `
         <svg width="180" height="45" viewBox="0 0 140 40" style="display:block; margin:auto;">
           <rect x="2" y="0" width="2" height="40" fill="#000"/><rect x="6" y="0" width="3" height="40" fill="#000"/>
@@ -2143,7 +2217,7 @@
       const heightMm = orientation === 'landscape' ? '38mm' : '72mm';
 
       const printWindow = window.open('', '_blank', 'width=400,height=300');
-      
+       
       printWindow.document.write(`
         <html lang="ar" dir="rtl">
         <head>
@@ -2227,7 +2301,7 @@
           const approveBtn = (o.status === 'قيد المراجعة' || o.status === 'جديد') 
             ? `<button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="openInspectOrderModal(${idx})">فحص واعتماد ✓</button>`
             : `<span style="font-size:11px; color:var(--ios-green); font-weight:bold;">مجهز: ${o.staffName || 'مسؤول'}</span>`;
-          
+           
           adminAction = `
             ${approveBtn}
             ${deliverBtn}
