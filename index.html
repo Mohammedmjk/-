@@ -1056,6 +1056,524 @@
       <div id="conn-lbl" class="header-sub">وضع الموظف (عرض وتجهيز)</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
+      <div id="admin-header-user-picker" style="display: none; align-items: center; gap: 4px; background: #e0f2fe; padding: 4px 10px; border-radius: 16px; border: 1px solid #bae6fd;">
+        <span style="font-size: 12px; color: #0369a1; font-weight: 700;">👤 المستخدم:</span>
+        <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 12px; color: #0369a1; font-weight: 800; outline: none; cursor: pointer;">
+          <option value="">اختر...</option>
+        </select>
+      </div>
+      <button class="btn btn-sec" onclick="triggerSync()">تحديث</button>
+      <button id="admin-toggle-btn" class="btn btn-admin" onclick="triggerAdmin()">دخول المذخر</button>
+    </div>
+  </header>
+
+  <div class="tabs-bar">
+    <div class="tab-item active" id="tab-btn-home" onclick="setMainTab('home')">الأدوية والمخزن</div>
+    <div class="tab-item" id="tab-btn-pos" style="display: none;" onclick="setMainTab('pos')">🛒 نافذة نقطة البيع (POS)</div>
+    <div class="tab-item" id="tab-btn-log" onclick="setMainTab('log')">سجل الصادر</div>
+    <div class="tab-item" id="tab-btn-staff" style="display: none;" onclick="setMainTab('staff')">👤 تقارير الموظفين</div>
+    <div class="tab-item" id="tab-btn-reports" style="display: none;" onclick="setMainTab('reports')">التقارير المالية</div>
+  </div>
+
+  <div id="view-home">
+    <div class="alert-banner-container" id="alerts-container"></div>
+
+    <div class="search-wrapper">
+      <div class="search-row-flex">
+        <div class="search-box-rel">
+          <input type="text" id="search-box" class="search-input" placeholder="🔍 ابحث بالمادة، الباركود، أو الشركة..." oninput="renderProducts()">
+          <button class="camera-scan-icon-btn" onclick="openCameraScanner('search-box')" title="مسح باركود بالكاميرا">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </button>
+        </div>
+
+        <div class="icon-action-circle" id="toggle-out-stock-circle" onclick="toggleHideOutStock()" title="إخفاء/إظهار الأدوية النافذة">
+          👁️
+        </div>
+
+        <div class="icon-action-circle" onclick="toggleDropdown('filter-dropdown', event)" title="فلترة متقدمة">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          <div id="filter-dropdown" class="dropdown-box" onclick="event.stopPropagation()">
+            <div>
+              <label>الشكل الدوائي:</label>
+              <select id="filter-form" onchange="renderProducts()">
+                <option value="">-- الكل --</option>
+                <option value="Tablet">Tablet (حبوب)</option>
+                <option value="Capsule">Capsule (كبسول)</option>
+                <option value="Syrup">Syrup (شراب)</option>
+                <option value="Suspension">Suspension (معلق)</option>
+                <option value="Injection">Injection (حقن)</option>
+                <option value="Vial">Vial (فيال)</option>
+                <option value="Ampoule">Ampoule (أمبول)</option>
+                <option value="Cream">Cream (كريم)</option>
+                <option value="Ointment">Ointment (مرهم)</option>
+                <option value="Gel">Gel (جل)</option>
+                <option value="Drops">Drops (قطرات)</option>
+              </select>
+            </div>
+            <div>
+              <label>حالة الصلاحية:</label>
+              <select id="filter-expiry" onchange="renderProducts()">
+                <option value="">-- الكل --</option>
+                <option value="valid">صالح (سليم)</option>
+                <option value="near">قريب الانتهاء (6 أشهر)</option>
+                <option value="expired">منتهي الصلاحية (تالف)</option>
+              </select>
+            </div>
+            <div>
+              <label>حالة المتوفر:</label>
+              <select id="filter-stock" onchange="renderProducts()">
+                <option value="">-- الكل --</option>
+                <option value="available">متوفر بالمخزن</option>
+                <option value="shortage">نواقص / نفد</option>
+              </select>
+            </div>
+            <div>
+              <label>الشركة المصنعة:</label>
+              <select id="filter-company" onchange="renderProducts()">
+                <option value="">-- جميع الشركات --</option>
+              </select>
+            }
+
+    .alert-banner-container {
+      padding: 0 16px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .alert-strip {
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .alert-expired { background: #ffe5e5; color: var(--ios-red); border: 1px solid #ffb3b3; }
+    .alert-near { background: #fff4e5; color: var(--ios-orange); border: 1px solid #ffd8a8; }
+    .alert-low { background: #f3f0ff; color: var(--ios-purple); border: 1px solid #dcd2ff; }
+    .alert-sync { background: #fff8e1; color: #b78103; border: 1px solid #ffe082; }
+
+    .search-wrapper { padding: 0 16px 10px; }
+    .search-row-flex {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .search-box-rel {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+    .search-input {
+      width: 100%;
+      background: #e3e3e8;
+      border: 1px solid transparent;
+      padding: 10px 40px 10px 40px;
+      border-radius: 12px;
+      font-size: 14px;
+      outline: none;
+      text-align: right;
+      transition: all 0.2s;
+    }
+    .search-input:focus {
+      background: #fff;
+      border-color: var(--ios-blue);
+      box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
+    }
+    .camera-scan-icon-btn {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffffff;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ios-blue);
+    }
+
+    .icon-action-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1.5px solid #d1d1d6;
+      color: var(--ios-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .icon-action-circle:active { transform: scale(0.93); background: #f2f2f7; }
+
+    .dropdown-box {
+      position: absolute;
+      left: 0;
+      top: 50px;
+      background: #fff;
+      border: 1px solid var(--ios-border);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      width: 280px;
+      padding: 16px;
+      z-index: 999;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dropdown-box.show { display: flex; }
+    .dropdown-box label { font-size: 12px; font-weight: 700; color: #1c1c1e; margin-bottom: 3px; display: block; }
+    .dropdown-box select {
+      width: 100%;
+      background: #f2f2f7;
+      border: 1px solid #c7c7cc;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+      color: #000;
+    }
+
+    .product-list {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .prod-card {
+      background: var(--ios-card);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .prod-top {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .prod-img-thumb {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #f2f2f7;
+      border: 1px solid var(--ios-border);
+      flex-shrink: 0;
+    }
+    .prod-info-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .prod-name { 
+      font-size: 17px; 
+      font-weight: 800; 
+      color: #111; 
+      line-height: 1.3; 
+    }
+    .prod-sub-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+    .badge-form { background: #e0f2fe; color: #0369a1; }
+    .badge-exp-bar { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 800; }
+    .badge-near-bar { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; font-weight: 800; }
+    .badge-normal-bar { background: #f4f4f5; color: #52525b; font-weight: 700; }
+    .badge-out { background: #ffebeb; color: var(--ios-red); font-weight: 800; text-align: center; padding: 10px; font-size: 14px; width: 100%; border-radius: 10px; display: block; }
+
+    .prod-cart-action-area {
+      width: 100%;
+      margin-top: 4px;
+    }
+    .btn-add-cart-wide {
+      background: #eef2ff;
+      color: var(--ios-blue);
+      border: 1.5px solid #c7d2fe;
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 2px 6px rgba(0, 122, 255, 0.12);
+    }
+    .btn-add-cart-wide:active { opacity: 0.7; transform: scale(0.98); }
+
+    .counter-control-wide {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      border: 1.5px solid var(--ios-blue);
+      border-radius: 12px;
+      padding: 4px 12px;
+      width: 100%;
+      box-shadow: 0 2px 6px rgba(0, 122, 255, 0.12);
+    }
+    .counter-btn-wide {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: none;
+      background: var(--ios-blue);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .counter-val-wide {
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--ios-blue);
+      background: #f2f2f7;
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--ios-border);
+      min-width: 60px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .prod-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 4px;
+      border-top: 0.5px solid var(--ios-border);
+    }
+    .prod-price { font-size: 17px; font-weight: 800; color: var(--ios-green); }
+    .prod-orig-price { font-size: 12px; color: var(--ios-sub); text-decoration: line-through; margin-left: 6px; }
+    .prod-stock-lbl { font-size: 13px; font-weight: 700; color: var(--ios-sub); }
+
+    .pos-container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 16px;
+      padding: 0 16px;
+    }
+    @media (max-width: 900px) {
+      .pos-container { grid-template-columns: 1fr; }
+    }
+    .pos-left-pane { display: flex; flex-direction: column; gap: 12px; }
+    .pos-right-pane {
+      background: var(--ios-card);
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid var(--ios-border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      height: fit-content;
+      position: sticky;
+      top: 70px;
+    }
+    .pos-grid-items {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      max-height: 70vh;
+      overflow-y: auto;
+      padding-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      .pos-grid-items { grid-template-columns: 1fr; }
+    }
+    .pos-mini-card {
+      background: var(--ios-card);
+      border: 1px solid var(--ios-border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .pos-mini-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+    .pos-mini-name { font-weight: 800; font-size: 13px; color: #111; line-height: 1.2; }
+    .pos-mini-btn {
+      background: var(--ios-blue);
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+    .pos-mini-bottom { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ios-sub); border-top: 0.5px solid var(--ios-border); padding-top: 6px; }
+
+    .finance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 0 16px;
+      margin-bottom: 14px;
+    }
+    .fin-card {
+      background: var(--ios-card);
+      border: 1px solid var(--ios-border);
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      position: relative;
+      overflow: hidden;
+    }
+    .fin-title { font-size: 11px; font-weight: 600; color: var(--ios-sub); }
+    .fin-amount { font-size: 17px; font-weight: 800; margin-top: 5px; }
+    .mini-chart {
+      width: 100%;
+      height: 25px;
+      margin-top: 8px;
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+    }
+    .mini-bar {
+      flex: 1;
+      background: rgba(0,122,255,0.2);
+      border-radius: 2px 2px 0 0;
+      transition: height 0.3s;
+    }
+
+    .floating-send-btn {
+      position: fixed;
+      bottom: 22px;
+      left: 20px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--ios-blue);
+      color: white;
+      border: none;
+      box-shadow: 0 6px 18px rgba(0, 122, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 90;
+      transition: transform 0.2s;
+    }
+    .floating-send-btn:active { transform: scale(0.92); }
+    .cart-badge-dot {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: var(--ios-red);
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 2px 7px;
+      border: 2px solid #fff;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-sheet {
+      background: #ffffff;
+      width: 100%;
+      max-width: 550px;
+      border-radius: 20px 20px 0 0;
+      padding: 18px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 0.5px solid var(--ios-border); padding-bottom: 10px; }
+    .sheet-title { font-size: 17px; font-weight: 700; }
+    .form-row { margin-bottom: 11px; }
+    .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--ios-sub); margin-bottom: 4px; }
+    .form-row input, .form-row select {
+      width: 100%;
+      background: #f2f2f7;
+      border: 1px solid var(--ios-border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    #scanner-video-box {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      min-height: 250px;
+    }
+
+    .barcode-preview-box {
+      background: #fff;
+      border: 1px solid #c7c7cc;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #invoice-a4-sheet { display: none; }
+    @media print {
+      body * { visibility: hidden; }
+      #invoice-a4-sheet, #invoice-a4-sheet * { visibility: visible; }
+      #invoice-a4-sheet { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <div class="header-title">مستودع سامو للأدوية</div>
+      <div id="conn-lbl" class="header-sub">وضع الموظف (عرض وتجهيز)</div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
       <!-- قائمة منسدلة أنيقة لاختيار المستخدم تظهر حصرياً لصاحب المذخر -->
       <div id="admin-header-user-picker" style="display: none; align-items: center; gap: 4px; background: #e0f2fe; padding: 4px 10px; border-radius: 16px; border: 1px solid #bae6fd;">
         <span style="font-size: 12px; color: #0369a1; font-weight: 700;">👤 المستخدم:</span>
