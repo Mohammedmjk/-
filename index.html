@@ -464,7 +464,6 @@
       <div id="conn-lbl" class="header-sub">وضع الموظف (عرض وتجهيز)</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <!-- قائمة منسدلة أنيقة لاختيار المستخدم تظهر حصرياً لصاحب المذخر -->
       <div id="admin-header-user-picker" style="display: none; align-items: center; gap: 4px; background: #e0f2fe; padding: 4px 10px; border-radius: 16px; border: 1px solid #bae6fd;">
         <span style="font-size: 12px; color: #0369a1; font-weight: 700;">👤 المستخدم:</span>
         <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 12px; color: #0369a1; font-weight: 800; outline: none; cursor: pointer;">
@@ -477,7 +476,7 @@
   </header>
 
   <div class="tabs-bar">
-    <div class="tab-item active" id="tab-btn-home" onclick="setMainTab('home')">الأدوية والتجهيز</div>
+    <div class="tab-item active" id="tab-btn-home" onclick="setMainTab('home')">الأدوية والمخزن</div>
     <div class="tab-item" id="tab-btn-log" onclick="setMainTab('log')">سجل الصادر</div>
     <div class="tab-item" id="tab-btn-staff" style="display: none;" onclick="setMainTab('staff')">👤 تقارير الموظفين</div>
     <div class="tab-item" id="tab-btn-reports" style="display: none;" onclick="setMainTab('reports')">التقارير المالية</div>
@@ -574,7 +573,6 @@
     <div id="staff-report-container" class="product-list"></div>
   </div>
 
-  <!-- تبويب التقارير المالية المتضمن لبيانات الشركات -->
   <div id="view-reports" style="display: none;">
     <div class="finance-grid">
       <div class="fin-card">
@@ -595,12 +593,10 @@
       </div>
     </div>
 
-    <!-- تقرير الشركات التفصيلي (عدد الأصناف والمبالغ) -->
+    <!-- تقرير الشركات التفصيلي في التقارير المالية -->
     <div class="chart-box" style="margin: 0 16px 14px; background: #fff; padding: 16px; border-radius: 12px; border: 1px solid var(--ios-border);">
       <div style="font-size: 15px; font-weight: 800; color: var(--ios-blue); margin-bottom: 10px;">🏢 تقرير الشركات المصنعة (عدد القطع والمبالغ):</div>
-      <div id="companies-report-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-        <!-- يتم تعبئته ديناميكياً من الشيت -->
-      </div>
+      <div id="companies-report-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
     </div>
 
     <div style="padding: 0 16px 14px; display: flex; flex-wrap: wrap; gap: 8px;">
@@ -1820,178 +1816,6 @@
         document.getElementById('edit-barcode').value = barcode;
       }
       openDirectBarcodeModal(name, barcode, price);
-    }
-
-    function renderOrders() {
-      const container = document.getElementById('orders-list-container');
-      if (!container) return;
-
-      if (!ordersList || ordersList.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد قوائم صادرة مسجلة</div>`;
-        return;
-      }
-
-      container.innerHTML = ordersList.map((o, idx) => {
-        let adminAction = '';
-        let deliverBtn = '';
-
-        if (o.status === 'معتمد للتجهيز') {
-          deliverBtn = `<button class="btn" style="padding:4px 10px; font-size:11px; background:#af52de;" onclick="markOrderAsDelivered(${idx})">تسليم الطلبية ✓</button>`;
-        }
-
-        if (isAdminUnlocked) {
-          const approveBtn = (o.status === 'قيد المراجعة' || o.status === 'جديد') 
-            ? `<button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="openInspectOrderModal(${idx})">فحص واعتماد ✓</button>`
-            : `<span style="font-size:11px; color:var(--ios-green); font-weight:bold;">مجهز: ${o.staffName || 'مسؤول'}</span>`;
-           
-          adminAction = `
-            ${approveBtn}
-            ${deliverBtn}
-            <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>
-          `;
-        } else {
-          adminAction = deliverBtn;
-        }
-
-        let statusBadge = '';
-        if (o.status === 'تم التسليم') {
-          statusBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1;">تم التسليم (المسلم: ${o.deliveredBy || 'الموظف'})</span>`;
-        } else if (o.status === 'معتمد للتجهيز') {
-          statusBadge = `<span class="badge" style="background:#ecfdf5; color:#16a34a;">معتمد (المجهز: ${o.staffName})</span>`;
-        } else {
-          statusBadge = `<span class="badge" style="background:#fff7ed; color:#ea580c;">قيد المراجعة</span>`;
-        }
-
-        return `
-          <div class="prod-card">
-            <div style="display:flex; justify-content:space-between; font-weight:700;">
-              <div>${o.pharmacyName}</div>
-              <div style="color:var(--ios-blue); font-size:12px;">${o.orderNumber}</div>
-            </div>
-            <div style="font-size:11px; color:var(--ios-sub); margin-top:2px;">
-              📅 ${o.date} | 📞 ${o.phone || 'بدون هاتف'}
-            </div>
-            <div style="font-size:12px; margin-top:4px; color:#444;">
-              عدد المواد: <b>${(o.items || []).length}</b> مادة | المجهز: <b>${o.staffName || 'غير مسجل'}</b>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-weight:800;">
-              <span style="color:var(--ios-green);">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
-              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                ${statusBadge}
-                <button class="btn btn-sec" style="padding:4px 10px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
-                ${adminAction}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderStaffManagementView() {
-      const container = document.getElementById('staff-report-container');
-      if (!container) return;
-
-      const staffActivityMap = {};
-      staffNamesList.forEach(name => {
-        staffActivityMap[name] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
-      });
-
-      ordersList.forEach(o => {
-        const preparer = (o.staffName && o.staffName !== 'غير مسجل') ? o.staffName.trim() : 'غير مسجل';
-        const deliverer = (o.deliveredBy && o.deliveredBy.trim() !== '') ? o.deliveredBy.trim() : null;
-
-        if (!staffActivityMap[preparer]) {
-          staffActivityMap[preparer] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
-        }
-        staffActivityMap[preparer].preparedCount++;
-        staffActivityMap[preparer].totalAmountPrepared += (o.totalAmount || 0);
-
-        if (deliverer) {
-          if (!staffActivityMap[deliverer]) {
-            staffActivityMap[deliverer] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
-          }
-          staffActivityMap[deliverer].deliveredCount++;
-        }
-      });
-
-      const staffEntries = Object.entries(staffActivityMap);
-      if (staffEntries.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub);">لا توجد موظفين مسجلين بعد</div>`;
-        return;
-      }
-
-      container.innerHTML = staffEntries.map(([staffName, data]) => `
-        <div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
-          <div style="font-size: 16px; font-weight: 800; color: #111; display:flex; justify-content:space-between; align-items:center;">
-            <span>👤 المستخدم: ${staffName}</span>
-            <button class="btn" style="background:#e0f2fe; color:#0369a1; font-size:11px; padding:3px 8px;" onclick="onStaffSelected('${staffName}'); alert('تم اختيار المستخدم ${staffName} كمستخدم حالي بنجاح.');">اختيار كمستخدم حالي</button>
-          </div>
-          <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 13px;">
-            <div style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
-              📦 الطلبيات المجهزة: ${data.preparedCount} طلب
-            </div>
-            <div style="background: #ecfdf5; color: #16a34a; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
-              🚚 الطلبيات المسلمة: ${data.deliveredCount} طلب
-            </div>
-          </div>
-          <div style="font-size: 12px; color: var(--ios-sub); margin-top: 4px;">
-            إجمالي مبالغ الطلبيات التي تجهزها: <b style="color: var(--ios-green);">${data.totalAmountPrepared.toLocaleString()} د.ع</b>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function triggerAdmin() {
-      if (isAdminUnlocked) {
-        isAdminUnlocked = false;
-        localStorage.removeItem('samo_admin_logged');
-        lockAdminUI(false);
-      } else {
-        const p = prompt("الرمز السري لصاحب المذخر:");
-        if (p === "admin2026") {
-          isAdminUnlocked = true;
-          localStorage.setItem('samo_admin_logged', 'true');
-          unlockAdminUI(false);
-        } else if (p !== null) {
-          alert("الرمز السري غير صحيح!");
-        }
-      }
-    }
-
-    function unlockAdminUI(isAutoLogin = false) {
-      isAdminUnlocked = true;
-      document.getElementById('admin-toggle-btn').innerText = "خروج المدير";
-      document.getElementById('admin-toggle-btn').style.background = "var(--ios-green)";
-      document.getElementById('conn-lbl').innerText = "وضع صاحب المذخر (تحكم مركزي كامل)";
-      document.getElementById('add-prod-btn').style.display = "inline-flex";
-      document.getElementById('admin-add-staff-btn').style.display = "inline-flex";
-      document.getElementById('admin-header-user-picker').style.display = "flex";
-      document.getElementById('tab-btn-staff').style.display = "block";
-      document.getElementById('tab-btn-reports').style.display = "block";
-      if (!isAutoLogin) {
-        triggerSync();
-      }
-      populateStaffDropdown();
-      updateStaffBadgeUI();
-      updateReportsView();
-      renderStaffManagementView();
-      renderProducts();
-      renderOrders();
-    }
-
-    function lockAdminUI(isAutoLogin = false) {
-      isAdminUnlocked = false;
-      document.getElementById('admin-toggle-btn').innerText = "دخول المذخر";
-      document.getElementById('admin-toggle-btn').style.background = "#3a3a3c";
-      document.getElementById('conn-lbl').innerText = "وضع الموظف (عرض وتجهيز)";
-      document.getElementById('add-prod-btn').style.display = "none";
-      document.getElementById('admin-add-staff-btn').style.display = "none";
-      document.getElementById('admin-header-user-picker').style.display = "none";
-      document.getElementById('tab-btn-staff').style.display = "none";
-      document.getElementById('tab-btn-reports').style.display = "none";
-      setMainTab('home');
-      renderProducts();
-      renderOrders();
     }
 
     function updateReportsView() {
