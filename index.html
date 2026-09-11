@@ -340,7 +340,7 @@
     .prod-orig-price { font-size: 12px; color: var(--ios-sub); text-decoration: line-through; margin-left: 6px; }
     .prod-stock-lbl { font-size: 13px; font-weight: 700; color: var(--ios-sub); }
 
-    /* أنماط نافذة نقطة البيع (POS) الجديدة */
+    /* أنماط نافذة نقطة البيع (POS) */
     .pos-container {
       display: grid;
       grid-template-columns: 1fr 380px;
@@ -634,7 +634,6 @@
     <div class="product-list" id="prod-list-container"></div>
   </div>
 
-  <!-- تبويب نقطة البيع (POS) المخصص لصاحب المذخر -->
   <div id="view-pos" style="display: none;">
     <div class="pos-container">
       <div class="pos-left-pane">
@@ -679,7 +678,10 @@
   </div>
 
   <div id="view-staff" style="display: none; padding: 0 16px;">
-    <div style="font-size: 15px; font-weight: 800; margin-bottom: 12px; color: var(--ios-blue);">إدارة الموظفين والنشاطات والتقارير:</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div style="font-size: 15px; font-weight: 800; color: var(--ios-blue);">إدارة الموظفين والنشاطات والتقارير:</div>
+      <button class="btn" style="background: var(--ios-green); font-size: 12px; padding: 6px 12px;" onclick="addNewStaffName()">+ إضافة موظف جديد</button>
+    </div>
     <div id="staff-report-container" class="product-list"></div>
   </div>
 
@@ -1042,8 +1044,11 @@
           localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
           populateStaffDropdown();
           onStaffSelected(trimmed);
+          if (isAdminUnlocked) renderStaffManagementView();
+          alert(`تمت إضافة الموظف "${trimmed}" بنجاح!`);
         } else {
           onStaffSelected(trimmed);
+          alert(`الموظف "${trimmed}" موجود مسبقاً وتم تحديثه كمستخدم حالي.`);
         }
       }
     }
@@ -1500,7 +1505,6 @@
       updateBadgeDot();
     }
 
-    // دوال نافذة نقطة البيع (POS) المطابقة تماماً للصورة
     function renderPosProducts() {
       const container = document.getElementById('pos-grid-container');
       if (!container) return;
@@ -2004,14 +2008,38 @@
       alert(`تم تسجيل تسليم الطلبية بنجاح بواسطة الموظف: ${staff}`);
     }
 
+    // دالة حذف الطلبية وإرجاع الكميات للمخزن والشيت
     function deleteOrderRecord(idx) {
       const o = ordersList[idx];
-      if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
+      if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟ سيتم إعادة الكميات إلى المخزن تلقائياً.`)) {
+        // إرجاع الأدوية للمخزن
+        if (o.items && Array.isArray(o.items)) {
+          o.items.forEach(it => {
+            const prod = inventory.find(p => p.id === it.id || p.name.trim().toLowerCase() === it.name.trim().toLowerCase());
+            if (prod) {
+              prod.quantity += Number(it.quantity) || 0;
+            }
+          });
+          localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+        }
+
         ordersList.splice(idx, 1);
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        
         renderOrders();
         renderAlerts();
+        renderProducts();
+        renderPosProducts();
         if (isAdminUnlocked) updateReportsView();
+
+        // مزامنة التعديلات مع الشيت
+        fetch(API_URL, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete_order', orderNumber: o.orderNumber, updatedInventory: inventory })
+        }).catch(() => {});
+
+        alert(`تم حذف الطلبية وإرجاع الكميات إلى المخزن بنجاح.`);
       }
     }
 
@@ -2222,6 +2250,10 @@
       if (!container) return;
 
       const staffActivityMap = {};
+      staffNamesList.forEach(name => {
+        staffActivityMap[name] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
+      });
+
       ordersList.forEach(o => {
         const preparer = (o.staffName && o.staffName !== 'غير مسجل') ? o.staffName.trim() : 'غير مسجل';
         const deliverer = (o.deliveredBy && o.deliveredBy.trim() !== '') ? o.deliveredBy.trim() : null;
@@ -2242,13 +2274,16 @@
 
       const staffEntries = Object.entries(staffActivityMap);
       if (staffEntries.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub);">لا توجد حركات مسجلة للموظفين بعد</div>`;
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub);">لا توجد موظفين مسجلين بعد</div>`;
         return;
       }
 
       container.innerHTML = staffEntries.map(([staffName, data]) => `
         <div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
-          <div style="font-size: 16px; font-weight: 800; color: #111;">👤 الموظف: ${staffName}</div>
+          <div style="font-size: 16px; font-weight: 800; color: #111; display:flex; justify-content:space-between; align-items:center;">
+            <span>👤 الموظف: ${staffName}</span>
+            <button class="btn" style="background:#e0f2fe; color:#0369a1; font-size:11px; padding:3px 8px;" onclick="onStaffSelected('${staffName}'); alert('تم اختيار الموظف ${staffName} كمستخدم حالي.');">اختيار كمستخدم حالي</button>
+          </div>
           <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 13px;">
             <div style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
               📦 الطلبيات المجهزة: ${data.preparedCount} طلب
@@ -2363,6 +2398,9 @@
     function exportStaffCSV() {
       let csv = "StaffName,PreparedCount,DeliveredCount,TotalAmountPrepared\n";
       const staffActivityMap = {};
+      staffNamesList.forEach(name => {
+        staffActivityMap[name] = { preparedCount: 0, deliveredCount: 0, totalAmountPrepared: 0 };
+      });
       ordersList.forEach(o => {
         const preparer = (o.staffName && o.staffName !== 'غير مسجل') ? o.staffName.trim() : 'غير مسجل';
         const deliverer = (o.deliveredBy && o.deliveredBy.trim() !== '') ? o.deliveredBy.trim() : null;
