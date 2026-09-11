@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>مستودع سامو للأدوية - نظام التجهيز الذكي ونقطة البيع</title>
+  <title>مستودع سامو للأدوية - نظام التجهيز الذكي</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" href="./icon-512.png">
   <link rel="apple-touch-icon" href="./icon-512.png">
@@ -18,15 +18,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ios-bg: #f8fafc;
+      --ios-bg: #f2f2f7;
       --ios-card: #ffffff;
-      --ios-text: #1e293b;
-      --ios-sub: #64748b;
+      --ios-text: #000000;
+      --ios-sub: #8e8e93;
       --ios-blue: #007aff;
-      --ios-green: #10b981;
-      --ios-red: #ef4444;
-      --ios-border: #e2e8f0;
-      --ios-btn-sec: #f1f5f9;
+      --ios-green: #34c759;
+      --ios-red: #ff3b30;
+      --ios-orange: #ff9500;
+      --ios-purple: #af52de;
+      --ios-border: #e5e5ea;
+      --ios-btn-sec: #e5e5ea;
     }
 
     * {
@@ -44,153 +46,183 @@
     }
 
     header {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(20px);
       position: sticky;
       top: 0;
       z-index: 50;
-      border-bottom: 1px solid var(--ios-border);
-      padding: 12px 20px;
+      border-bottom: 0.5px solid rgba(0,0,0,0.15);
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .header-title { font-size: 18px; font-weight: 900; color: #0f172a; }
-    .header-sub { font-size: 12px; color: var(--ios-sub); }
+    .header-title { font-size: 17px; font-weight: 700; }
+    .header-sub { font-size: 11px; color: var(--ios-sub); }
 
     .btn {
       background: var(--ios-blue);
       color: #fff;
       border: none;
-      padding: 8px 16px;
-      border-radius: 14px;
+      padding: 7px 14px;
+      border-radius: 18px;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
+      gap: 4px;
     }
-    .btn:active { opacity: 0.8; transform: scale(0.98); }
-    .btn-sec { background: var(--ios-btn-sec); color: var(--ios-text); border: 1px solid var(--ios-border); }
-    .btn-danger { background: #fee2e2; color: var(--ios-red); }
-    .btn-admin { background: #334155; }
+    .btn:active { opacity: 0.7; }
+    .btn-sec { background: var(--ios-btn-sec); color: var(--ios-text); }
+    .btn-danger { background: #ffe5e5; color: var(--ios-red); }
+    .btn-admin { background: #3a3a3c; }
 
     .tabs-bar {
       display: flex;
-      background: #e2e8f0;
-      border-radius: 14px;
-      padding: 4px;
-      margin: 16px 20px;
+      background: #e3e3e8;
+      border-radius: 10px;
+      padding: 3px;
+      margin: 12px 16px;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
       overflow-x: auto;
     }
     .tab-item {
       flex: 1;
       text-align: center;
-      padding: 10px 14px;
-      font-size: 12px;
+      padding: 8px 10px;
+      font-size: 11px;
       font-weight: 700;
-      border-radius: 10px;
+      border-radius: 8px;
       cursor: pointer;
-      color: #475569;
+      color: #3a3a3c;
       white-space: nowrap;
       transition: all 0.2s ease;
     }
     .tab-item.active {
       background: #ffffff;
-      color: #0f172a;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      color: #000;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12);
     }
 
-    .search-wrapper { padding: 0 20px 12px; }
-    .search-row-flex { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-    .search-box-rel { position: relative; flex: 1; display: flex; align-items: center; }
+    .search-wrapper { padding: 0 16px 10px; }
+    .search-row-flex {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .search-box-rel {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
     .search-input {
       width: 100%;
-      background: #ffffff;
-      border: 1px solid var(--ios-border);
-      padding: 12px 45px 12px 16px;
-      border-radius: 14px;
+      background: #e3e3e8;
+      border: 1px solid transparent;
+      padding: 10px 40px 10px 14px;
+      border-radius: 12px;
       font-size: 14px;
       outline: none;
       text-align: right;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
-    .search-input:focus { border-color: var(--ios-blue); box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
     .camera-scan-icon-btn {
-      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-      background: #f1f5f9; border: 1px solid var(--ios-border); border-radius: 10px;
-      width: 36px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ios-blue);
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffffff;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      width: 32px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ios-blue);
     }
 
-    .product-list { padding: 0 20px; display: flex; flex-direction: column; gap: 12px; }
+    .product-list {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .prod-card {
-      background: var(--ios-card); border-radius: 16px; padding: 16px;
-      display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-      border: 1px solid var(--ios-border);
+      background: var(--ios-card);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
-    .badge-out { background: #fee2e2; color: var(--ios-red); font-weight: 800; text-align: center; padding: 10px; font-size: 14px; width: 100%; border-radius: 12px; display: block; }
+    .prod-top { display: flex; gap: 12px; align-items: flex-start; }
+    .prod-info-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .prod-name { font-size: 17px; font-weight: 800; color: #111; line-height: 1.3; }
+    .badge-out { background: #ffebeb; color: var(--ios-red); font-weight: 800; text-align: center; padding: 10px; font-size: 14px; width: 100%; border-radius: 10px; display: block; }
 
-    .btn-add-cart-wide {
-      background: #eff6ff; color: var(--ios-blue); border: 1.5px solid #bfdbfe; width: 100%;
-      padding: 12px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-    }
-    .counter-control-wide {
-      display: flex; align-items: center; justify-content: space-between; background: #ffffff;
-      border: 1.5px solid var(--ios-blue); border-radius: 12px; padding: 4px 12px; width: 100%;
-    }
-    .counter-btn-wide { width: 38px; height: 38px; border-radius: 10px; border: none; background: var(--ios-blue); color: #ffffff; font-weight: 800; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .counter-val-wide { font-weight: 800; font-size: 18px; color: var(--ios-blue); background: #f8fafc; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--ios-border); min-width: 60px; text-align: center; }
-
-    .prod-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid var(--ios-border); }
+    .prod-bottom { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 0.5px solid var(--ios-border); }
     .prod-price { font-size: 17px; font-weight: 800; color: var(--ios-green); }
     .prod-stock-lbl { font-size: 13px; font-weight: 700; color: var(--ios-sub); }
 
     .finance-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 0 20px; margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      padding: 0 16px;
+      margin-bottom: 14px;
     }
-    .fin-card { background: var(--ios-card); border: 1px solid var(--ios-border); padding: 16px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
-    .fin-title { font-size: 12px; font-weight: 600; color: var(--ios-sub); }
-    .fin-amount { font-size: 18px; font-weight: 900; margin-top: 6px; }
+    .fin-card { background: var(--ios-card); border: 1px solid var(--ios-border); padding: 12px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    .fin-title { font-size: 11px; font-weight: 600; color: var(--ios-sub); }
+    .fin-amount { font-size: 17px; font-weight: 800; margin-top: 5px; }
 
     .chart-box {
-      background: var(--ios-card); border: 1px solid var(--ios-border); border-radius: 16px; padding: 20px; margin: 0 20px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      background: var(--ios-card); border: 1px solid var(--ios-border); border-radius: 16px; padding: 16px; margin: 0 16px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .floating-send-btn {
+      position: fixed; bottom: 22px; left: 20px; width: 58px; height: 58px; border-radius: 50%;
+      background: var(--ios-blue); color: white; border: none; box-shadow: 0 6px 18px rgba(0, 122, 255, 0.4);
+      display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 90;
+    }
+    .cart-badge-dot {
+      position: absolute; top: -2px; right: -2px; background: var(--ios-red); color: white;
+      font-size: 11px; font-weight: 800; border-radius: 12px; padding: 2px 7px; border: 2px solid #fff;
     }
 
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px);
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
       display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px;
     }
     .modal-sheet {
-      background: #ffffff; width: 100%; max-width: 550px; border-radius: 24px; padding: 24px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+      background: #ffffff; width: 100%; max-width: 550px; border-radius: 20px; padding: 18px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
-    .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--ios-border); padding-bottom: 12px; }
-    .sheet-title { font-size: 18px; font-weight: 800; color: #0f172a; }
-    .form-row { margin-bottom: 14px; }
-    .form-row label { display: block; font-size: 13px; font-weight: 700; color: var(--ios-sub); margin-bottom: 6px; }
-    .form-row input, .form-row select { width: 100%; background: #f8fafc; border: 1px solid var(--ios-border); border-radius: 12px; padding: 11px 14px; font-size: 14px; outline: none; }
-    .form-row input:focus { border-color: var(--ios-blue); background: #fff; }
-
-    #scanner-video-box { width: 100%; border-radius: 16px; overflow: hidden; background: #000; min-height: 280px; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 0.5px solid var(--ios-border); padding-bottom: 10px; }
+    .sheet-title { font-size: 17px; font-weight: 700; }
+    .form-row { margin-bottom: 11px; }
+    .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--ios-sub); margin-bottom: 4px; }
+    .form-row input, .form-row select { width: 100%; background: #f2f2f7; border: 1px solid var(--ios-border); border-radius: 8px; padding: 9px 12px; font-size: 13px; outline: none; }
+    #scanner-video-box { width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
   </style>
 </head>
-<body>
+<body class="text-slate-800">
 
   <header>
     <div>
       <div class="header-title">مستودع سامو للأدوية</div>
       <div id="conn-lbl" class="header-sub">وضع الموظف (عرض وتجهيز)</div>
     </div>
-    <div style="display: flex; gap: 10px; align-items: center;">
-      <div style="display: flex; align-items: center; gap: 6px; background: #eff6ff; padding: 4px 12px; border-radius: 16px; border: 1px solid #bfdbfe;">
-        <span style="font-size: 12px; color: #0369a1; font-weight: 800;">👤 الموظف:</span>
-        <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 12px; color: #0369a1; font-weight: 800; outline: none; cursor: pointer;">
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 4px; background: #e0f2fe; padding: 3px 8px; border-radius: 14px;">
+        <span style="font-size: 11px; color: #0369a1; font-weight: 700;">👤 الموظف:</span>
+        <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 11px; color: #0369a1; font-weight: 700; outline: none; cursor: pointer;">
           <option value="">اختر اسمك...</option>
         </select>
-        <button onclick="addNewStaffName()" style="background: #0369a1; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="إضافة اسم جديد">+</button>
+        <button onclick="addNewStaffName()" style="background: #0369a1; color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="إضافة اسم جديد">+</button>
       </div>
       <button class="btn btn-sec" onclick="triggerSync()">تحديث</button>
       <button id="admin-toggle-btn" class="btn btn-admin" onclick="triggerAdmin()">دخول المذخر</button>
@@ -205,7 +237,7 @@
     <div class="tab-item" id="tab-btn-reports" style="display: none;" onclick="setMainTab('reports')">📊 التقارير المالية</div>
   </div>
 
-  <!-- تبويب الأدوية والمخزن -->
+  <!-- تبويب الأدوية -->
   <div id="view-home">
     <div class="search-wrapper">
       <div class="search-row-flex">
@@ -213,23 +245,23 @@
           <input type="text" id="search-box" class="search-input" placeholder="🔍 ابحث بالمادة، الباركود، أو الشركة..." oninput="renderProducts()">
           <button class="camera-scan-icon-btn" onclick="openCameraScanner()" title="مسح باركود بالكاميرا">📷</button>
         </div>
-        <button id="toggle-out-of-stock-btn" class="btn btn-sec" style="white-space: nowrap; font-size: 13px; padding: 12px 16px; border-radius: 14px;" onclick="toggleShowOutOfStock()">
+        <button id="toggle-out-of-stock-btn" class="btn btn-sec" style="white-space: nowrap; font-size: 12px; padding: 10px 14px; border-radius: 12px;" onclick="toggleShowOutOfStock()">
           📦 إظهار كل الأدوية
         </button>
       </div>
-      <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
-        <button id="add-prod-btn" class="btn" style="display: none; background: var(--ios-green); font-size: 13px;" onclick="openAddModal()">+ إضافة مادة جديدة</button>
+      <div style="display: flex; justify-content: flex-end;">
+        <button id="add-prod-btn" class="btn" style="display: none; background: var(--ios-green); font-size:12px; padding:5px 12px;" onclick="openAddModal()">+ مادة جديدة</button>
       </div>
     </div>
     <div class="product-list" id="prod-list-container"></div>
   </div>
 
-  <!-- تبويب نافذة نقطة البيع (POS) المطابقة للطلب تماماً -->
-  <div id="view-pos" style="display: none; padding: 0 20px;">
+  <!-- تبويب نافذة نقطة البيع (POS) المطلوبة بالتصميم الجديد تماماً -->
+  <div id="view-pos" style="display: none; padding: 0 16px;">
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 h-[80vh]">
         
         <!-- قسم السلة وتجهيز الطلبية (يمين) -->
-        <div class="lg:col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
+        <div class="lg:col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
             <h3 class="font-bold text-lg text-sky-600 mb-4 border-b pb-2">🛒 سلة تجهيز الصيدلية</h3>
             
             <div class="space-y-3 mb-4">
@@ -237,7 +269,7 @@
                     <label class="block text-xs font-bold text-slate-500 mb-1">اسم الصيدلية المستلمة:</label>
                     <input type="text" id="pharmacyNameInput" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-sky-500" placeholder="مثال: صيدلية النور">
                 </div>
-                <div style="font-size: 12px; color: var(--ios-sub);">الموظف المجهز الحالي: <b style="color:var(--ios-green);" id="pos-active-staff-lbl">غير مسجل</b></div>
+                <div style="font-size: 11px; color: var(--ios-sub);">الموظف المجهز الحالي: <b style="color:var(--ios-green);" id="pos-active-staff-lbl">غير مسجل</b></div>
             </div>
 
             <!-- قائمة المواد في السلة -->
@@ -258,28 +290,28 @@
         </div>
 
         <!-- قسم البحث والمنتجات (يسار) -->
-        <div class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
+        <div class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
             <div class="flex gap-3 mb-4">
                 <input type="text" id="posSearchInput" oninput="filterPosProducts()" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" placeholder="🔍 ابحث باسم المادة أو امسح الباركود...">
             </div>
 
             <!-- شبكة الأدوية المتاحة للتجهيز -->
             <div id="posProductsGrid" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
-                <!-- تظهر المواد هنا ديناميكياً بناءً على المخزن -->
+                <!-- تظهر المواد هنا ديناميكياً -->
             </div>
         </div>
     </div>
   </div>
 
   <!-- تبويب سجل الصادر -->
-  <div id="view-log" style="display: none; padding: 0 20px;">
-    <div style="font-size: 14px; font-weight: 700; color: var(--ios-sub); margin-bottom: 10px;">سجل القوائم الصادرة والتواريخ:</div>
+  <div id="view-log" style="display: none; padding: 0 16px;">
+    <div style="font-size: 13px; font-weight: 700; color: var(--ios-sub); margin-bottom: 8px;">سجل القوائم الصادرة والتواريخ:</div>
     <div id="orders-list-container" class="product-list"></div>
   </div>
 
-  <!-- تبويب تقارير الموظفين -->
-  <div id="view-staff" style="display: none; padding: 0 20px;">
-    <div style="font-size: 16px; font-weight: 900; margin-bottom: 14px; color: var(--ios-blue);">👤 تقارير أداء ونشاط الموظفين:</div>
+  <!-- تبويب تقارير الموظفين والرسوم -->
+  <div id="view-staff" style="display: none; padding: 0 16px;">
+    <div style="font-size: 15px; font-weight: 800; margin-bottom: 12px; color: var(--ios-blue);">👤 تقارير أداء ونشاط الموظفين:</div>
     <div class="chart-box">
       <canvas id="staffChart" height="130"></canvas>
     </div>
@@ -302,17 +334,17 @@
         <div id="fin-stock-val" class="fin-amount" style="color: var(--ios-green);">0 د.ع</div>
       </div>
       <div class="fin-card">
-        <div class="fin-title">إجمالي المصروف وصادر الصيدليات</div>
+        <div class="fin-title">إجمالي المصروف</div>
         <div id="fin-dispatched-val" class="fin-amount" style="color: var(--ios-blue);">0 د.ع</div>
       </div>
     </div>
 
     <div class="chart-box">
-      <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 12px; color: #0f172a;">📊 حركة التجهيزات المالية الصادرة</h3>
+      <h3 style="font-size: 14px; font-weight: 800; margin-bottom: 10px; color: #111;">📊 حركة التجهيزات المالية الصادرة</h3>
       <canvas id="financialChart" height="120"></canvas>
     </div>
 
-    <div style="padding: 0 20px 20px; display: flex; flex-wrap: wrap; gap: 10px;">
+    <div style="padding: 0 16px 14px; display: flex; flex-wrap: wrap; gap: 8px;">
       <button class="btn" style="background: #107c41;" onclick="exportInventoryCSV()">📊 تصدير المخزون الكامل (Excel)</button>
       <button class="btn" style="background: #d97706;" onclick="exportOrdersCSV()">📑 تصدير حركات الصيدليات</button>
       <button class="btn" style="background: #0284c7;" onclick="exportStaffCSV()">👤 تصدير تقرير الموظفين</button>
@@ -332,21 +364,6 @@
     </div>
   </div>
 
-  <!-- مودال فحص الطلبية واعتمادها -->
-  <div id="modal-inspect-order" class="modal-overlay">
-    <div class="modal-sheet">
-      <div class="sheet-head">
-        <div class="sheet-title" id="inspect-modal-title">فحص وتعديل الطلبية</div>
-        <button class="btn btn-sec" onclick="closeInspectModal()">إغلاق</button>
-      </div>
-      <div id="inspect-order-items-box" style="max-height: 250px; overflow-y: auto; margin-bottom: 14px;"></div>
-      <div style="display: flex; gap: 10px;">
-        <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" onclick="approveAndSignOrder()">اعتماد الطلبية وتثبيت المجهز ✓</button>
-        <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إلغاء</button>
-      </div>
-    </div>
-  </div>
-
   <!-- مودال إضافة مادة -->
   <div id="modal-add-item" class="modal-overlay">
     <div class="modal-sheet">
@@ -356,12 +373,12 @@
       </div>
       <div class="form-row"><label>اسم المادة:</label><input type="text" id="in-name" placeholder="مثال: Paracetamol Syrup"></div>
       <div class="form-row"><label>الشركة / المنشأ:</label><input type="text" id="in-company" placeholder="اسم الشركة المصنعة..."></div>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 8px;">
         <div class="form-row" style="flex:1;"><label>العدد:</label><input type="number" id="in-qty" value="10"></div>
         <div class="form-row" style="flex:1;"><label>السعر:</label><input type="number" id="in-price" value="5000"></div>
       </div>
       <div class="form-row"><label>تاريخ الصلاحية (YYYY-MM):</label><input type="text" id="in-exp" placeholder="2027-12"></div>
-      <button class="btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="saveNewMedicine()">حفظ وترحيل المادة للشيت</button>
+      <button class="btn" style="width: 100%; justify-content: center; padding: 11px;" onclick="saveNewMedicine()">حفظ وترحيل المادة للشيت</button>
     </div>
   </div>
 
@@ -369,13 +386,12 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbwT6X3nE6XO-RmcI_p_pSeNVpI4zATH3Hrp5oI-2bql6RLRowDZe_MH6_r99G4Di5ZN/exec";
     let inventory = [];
     let ordersList = [];
-    let cart = {}; // سلة نقطة البيع المتوافقة مع الكود المطلوب
+    let cart = {}; // سلة نقطة البيع الجديدة
     
     let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
     let activeStaffName = localStorage.getItem('samo_active_staff') || '';
     let staffNamesList = JSON.parse(localStorage.getItem('samo_staff_names_list') || '["أحمد", "محمد", "علي", "سجاد"]');
     let html5QrScanner = null;
-    let currentInspectingOrderIndex = null;
     let staffChartInstance = null;
     let financialChartInstance = null;
     let showOutOfStockItems = false;
@@ -512,7 +528,7 @@
       const list = filteredList || inventory.filter(i => Number(i.quantity) > 0);
 
       if (list.length === 0) {
-        container.innerHTML = '<p class="text-slate-400 text-center col-span-2 py-10">لا توجد مواد متاحة للتجهيز</p>';
+        container.innerHTML = '<p class="text-slate-400 text-center col-span-2 py-10">لا توجد مواد متوفرة للتجهيز</p>';
         return;
       }
 
@@ -536,7 +552,7 @@
     function addToCart(id, name, price, maxQty) {
       if (cart[id]) {
         if (cart[id].qty < maxQty) cart[id].qty += 1;
-        else alert("وصلت للحد الأقصى للكمية المتوفرة في المخزن!");
+        else alert("وصلت للحد الأقصى للكمية المتوفرة!");
       } else {
         cart[id] = { id, name, price, qty: 1, maxQty };
       }
@@ -610,7 +626,6 @@
       ordersList.unshift(newOrder);
       localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
 
-      // خصم الكميات من المخزن محلياً
       itemsList.forEach(it => {
         const prod = inventory.find(i => i.id === it.id || i.name === it.name);
         if (prod) prod.quantity = Math.max(0, prod.quantity - it.qty);
@@ -627,7 +642,6 @@
       setMainTab('log');
     }
 
-    // --- سجل الصادر والطلبيات ---
     function renderOrders() {
       const container = document.getElementById('orders-list-container');
       if (!container) return;
@@ -645,13 +659,12 @@
           <div style="font-size:12px; color:var(--ios-sub);">📅 ${o.date} | المجهز: <b>${o.staffName || 'غير مسجل'}</b></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-weight:900;">
             <span style="color:var(--ios-green);">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
-            <span class="badge" style="background:#e0f2fe; color:#0369a1;">${o.status}</span>
+            <span class="badge" style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:6px; font-size:11px;">${o.status}</span>
           </div>
         </div>
       `).join('');
     }
 
-    // --- الرسوم البيانية والتقارير المالية ---
     function updateReportsAndCharts() {
       const phMap = {};
       ordersList.forEach(o => {
@@ -709,7 +722,6 @@
       `).join('');
     }
 
-    // --- تصدير ملفات Excel / CSV ---
     function downloadCSV(csvContent, fileName) {
       const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -738,7 +750,6 @@
       downloadCSV(csv, 'samo_staff_performance.csv');
     }
 
-    // --- إدارة الأدوار والتبويبات ---
     function triggerAdmin() {
       if (isAdminUnlocked) {
         isAdminUnlocked = false;
@@ -768,7 +779,7 @@
     function lockAdminUI() {
       isAdminUnlocked = false;
       document.getElementById('admin-toggle-btn').innerText = "دخول المذخر";
-      document.getElementById('admin-toggle-btn').style.background = "#334155";
+      document.getElementById('admin-toggle-btn').style.background = "#3a3a3c";
       document.getElementById('conn-lbl').innerText = "وضع الموظف (عرض وتجهيز)";
       document.getElementById('add-prod-btn').style.display = "none";
       document.getElementById('tab-btn-staff').style.display = "none";
