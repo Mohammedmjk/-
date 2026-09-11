@@ -538,6 +538,13 @@
       <div id="conn-lbl" class="header-sub">وضع الموظف (عرض وتجهيز)</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
+      <!-- قائمة منسدلة أنيقة لاختيار المستخدم تظهر حصرياً لصاحب المذخر -->
+      <div id="admin-header-user-picker" style="display: none; align-items: center; gap: 4px; background: #e0f2fe; padding: 4px 10px; border-radius: 16px; border: 1px solid #bae6fd;">
+        <span style="font-size: 12px; color: #0369a1; font-weight: 700;">👤 المستخدم:</span>
+        <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 12px; color: #0369a1; font-weight: 800; outline: none; cursor: pointer;">
+          <option value="">اختر...</option>
+        </select>
+      </div>
       <button class="btn btn-sec" onclick="triggerSync()">تحديث</button>
       <button id="admin-toggle-btn" class="btn btn-admin" onclick="triggerAdmin()">دخول المذخر</button>
     </div>
@@ -1007,6 +1014,7 @@
     let targetImageInputId = null;
 
     window.addEventListener('DOMContentLoaded', () => {
+      populateStaffDropdown();
       updateStaffBadgeUI();
       
       if (isAdminUnlocked) {
@@ -1022,14 +1030,17 @@
       });
     });
 
+    function populateStaffDropdown() {
+      const select = document.getElementById('staff-name-select');
+      if (!select) return;
+      select.innerHTML = '<option value="">اختر المستخدم...</option>' +
+        staffNamesList.map(name => `<option value="${name}" ${name === activeStaffName ? 'selected' : ''}>${name}</option>`).join('');
+    }
+
     function onStaffSelected(val) {
       activeStaffName = val;
       localStorage.setItem('samo_active_staff', activeStaffName);
       updateStaffBadgeUI();
-      const posBadge = document.getElementById('pos-staff-badge');
-      if (posBadge) {
-        posBadge.innerText = activeStaffName || 'غير مسجل';
-      }
     }
 
     function addNewStaffNamePrompt() {
@@ -1043,6 +1054,7 @@
         if (!staffNamesList.includes(trimmed)) {
           staffNamesList.push(trimmed);
           localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
+          populateStaffDropdown();
           onStaffSelected(trimmed);
           if (isAdminUnlocked) renderStaffManagementView();
           alert(`تمت إضافة الموظف "${trimmed}" بنجاح!`);
@@ -1063,6 +1075,10 @@
     }
 
     function updateStaffBadgeUI() {
+      const select = document.getElementById('staff-name-select');
+      if (select && activeStaffName) {
+        select.value = activeStaffName;
+      }
       const posBadge = document.getElementById('pos-staff-badge');
       if (posBadge) {
         posBadge.innerText = activeStaffName || 'غير مسجل';
@@ -1618,7 +1634,7 @@
       if (!ph) return alert("يرجى كتابة اسم الصيدلية المستلمة");
 
       if (!activeStaffName) {
-        return alert("يرجى اختيار اسمك (الموظف المجهز) من قائمة الموظفين أولاً!");
+        return alert("يرجى اختيار اسمك (الموظف المجهز) من قائمة المستخدمين في أعلى الشاشة أولاً!");
       }
 
       const newItems = keys.map(id => {
@@ -1678,7 +1694,7 @@
       renderPosProducts();
       renderProducts();
       renderOrders();
-      alert(`تم إرسال واعتماد طلب صيدلية ${ph} بنجاح عبر نقطة البيع (POS) بواسطة الموظف (${activeStaffName})!`);
+      alert(`تم إرسال واعتماد طلب صيدلية ${ph} بنجاح عبر نقطة البيع (POS) بواسطة المستخدم (${activeStaffName})!`);
     }
 
     function promptDirectCartQty(prodId) {
@@ -1866,7 +1882,7 @@
       if (!ph) return alert("يرجى كتابة اسم الصيدلية");
 
       if (!activeStaffName) {
-        return alert("يرجى اختيار اسمك (الموظف المجهز) من قائمة الموظفين أولاً!");
+        return alert("يرجى اختيار اسمك (الموظف المجهز) من قائمة المستخدمين في أعلى الشاشة أولاً!");
       }
 
       const newItems = Object.keys(cartMap).map(id => {
@@ -1933,7 +1949,7 @@
       renderAlerts();
       renderProducts();
       renderOrders();
-      alert(`تم إرسال طلب صيدلية ${ph} بنجاح بواسطة الموظف (${activeStaffName})!`);
+      alert(`تم إرسال طلب صيدلية ${ph} بنجاح بواسطة المستخدم (${activeStaffName})!`);
     }
 
     function openInspectOrderModal(idx) {
@@ -1977,7 +1993,7 @@
       o.totalAmount = o.items.reduce((s, it) => s + (it.price * it.quantity), 0);
 
       if (!activeStaffName) {
-        return alert("يرجى اختيار اسمك من قائمة الموظفين لتثبيته كمجهز معتمد للطلبية!");
+        return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمجهز معتمد للطلبية!");
       }
       o.staffName = activeStaffName;
       o.status = 'معتمد للتجهيز';
@@ -1999,7 +2015,7 @@
     function markOrderAsDelivered(idx) {
       const o = ordersList[idx];
       if (!activeStaffName) {
-        return alert("يرجى اختيار اسمك من قائمة الموظفين لتثبيته كمسلم للطلبية!");
+        return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمسلم للطلبية!");
       }
       
       o.status = 'تم التسليم';
@@ -2018,7 +2034,7 @@
         body: JSON.stringify({ action: 'new_order', order: o })
       }).catch(() => {});
 
-      alert(`تم تسجيل تسليم الطلبية بنجاح بواسطة الموظف: ${activeStaffName}`);
+      alert(`تم تسجيل تسليم الطلبية بنجاح بواسطة المستخدم: ${activeStaffName}`);
     }
 
     function deleteOrderRecord(idx) {
@@ -2291,8 +2307,8 @@
       container.innerHTML = staffEntries.map(([staffName, data]) => `
         <div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
           <div style="font-size: 16px; font-weight: 800; color: #111; display:flex; justify-content:space-between; align-items:center;">
-            <span>👤 الموظف: ${staffName}</span>
-            <button class="btn" style="background:#e0f2fe; color:#0369a1; font-size:11px; padding:3px 8px;" onclick="onStaffSelected('${staffName}'); alert('تم اختيار الموظف ${staffName} كمستخدم حالي بنجاح.');">اختيار كمستخدم حالي</button>
+            <span>👤 المستخدم: ${staffName}</span>
+            <button class="btn" style="background:#e0f2fe; color:#0369a1; font-size:11px; padding:3px 8px;" onclick="onStaffSelected('${staffName}'); alert('تم اختيار المستخدم ${staffName} كمستخدم حالي بنجاح.');">اختيار كمستخدم حالي</button>
           </div>
           <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 13px;">
             <div style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-weight: 700;">
@@ -2333,12 +2349,15 @@
       document.getElementById('conn-lbl').innerText = "وضع صاحب المذخر (تحكم مركزي كامل)";
       document.getElementById('add-prod-btn').style.display = "inline-flex";
       document.getElementById('admin-add-staff-btn').style.display = "inline-flex";
+      document.getElementById('admin-header-user-picker').style.display = "flex";
       document.getElementById('tab-btn-pos').style.display = "block";
       document.getElementById('tab-btn-staff').style.display = "block";
       document.getElementById('tab-btn-reports').style.display = "block";
       if (!isAutoLogin) {
         triggerSync();
       }
+      populateStaffDropdown();
+      updateStaffBadgeUI();
       updateReportsView();
       renderStaffManagementView();
       renderProducts();
@@ -2353,6 +2372,7 @@
       document.getElementById('conn-lbl').innerText = "وضع الموظف (عرض وتجهيز)";
       document.getElementById('add-prod-btn').style.display = "none";
       document.getElementById('admin-add-staff-btn').style.display = "none";
+      document.getElementById('admin-header-user-picker').style.display = "none";
       document.getElementById('tab-btn-pos').style.display = "none";
       document.getElementById('tab-btn-staff').style.display = "none";
       document.getElementById('tab-btn-reports').style.display = "none";
