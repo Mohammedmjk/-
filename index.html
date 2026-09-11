@@ -103,24 +103,6 @@
       box-shadow: 0 3px 8px rgba(0,0,0,0.12);
     }
 
-    .alert-banner-container {
-      padding: 0 16px 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .alert-strip {
-      padding: 8px 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-    }
-    .alert-sync { background: #fff8e1; color: #b78103; border: 1px solid #ffe082; }
-
     .search-wrapper { padding: 0 16px 10px; }
     .search-row-flex {
       display: flex;
@@ -161,50 +143,6 @@
       color: var(--ios-blue);
     }
 
-    .icon-action-circle {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: #ffffff;
-      border: 1.5px solid #d1d1d6;
-      color: var(--ios-blue);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
-      flex-shrink: 0;
-      position: relative;
-    }
-
-    .dropdown-box {
-      position: absolute;
-      left: 0;
-      top: 50px;
-      background: #fff;
-      border: 1px solid var(--ios-border);
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      width: 280px;
-      padding: 16px;
-      z-index: 999;
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .dropdown-box.show { display: flex; }
-    .dropdown-box label { font-size: 12px; font-weight: 700; color: #1c1c1e; margin-bottom: 3px; display: block; }
-    .dropdown-box select {
-      width: 100%;
-      background: #f2f2f7;
-      border: 1px solid #c7c7cc;
-      border-radius: 8px;
-      padding: 9px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      outline: none;
-    }
-
     .product-list {
       padding: 0 16px;
       display: flex;
@@ -221,12 +159,8 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
     .prod-top { display: flex; gap: 12px; align-items: flex-start; }
-    .prod-img-thumb { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; background: #f2f2f7; border: 1px solid var(--ios-border); flex-shrink: 0; }
     .prod-info-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
     .prod-name { font-size: 17px; font-weight: 800; color: #111; line-height: 1.3; }
-    .prod-sub-info { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .badge { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700; }
-    .badge-form { background: #e0f2fe; color: #0369a1; }
     .badge-out { background: #ffebeb; color: var(--ios-red); font-weight: 800; text-align: center; padding: 10px; font-size: 14px; width: 100%; border-radius: 10px; display: block; }
 
     .btn-add-cart-wide {
@@ -252,9 +186,7 @@
       padding: 0 16px;
       margin-bottom: 14px;
     }
-    .fin-card {
-      background: var(--ios-card); border: 1px solid var(--ios-border); padding: 12px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-    }
+    .fin-card { background: var(--ios-card); border: 1px solid var(--ios-border); padding: 12px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
     .fin-title { font-size: 11px; font-weight: 600; color: var(--ios-sub); }
     .fin-amount { font-size: 17px; font-weight: 800; margin-top: 5px; }
 
@@ -284,7 +216,6 @@
     .form-row { margin-bottom: 11px; }
     .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--ios-sub); margin-bottom: 4px; }
     .form-row input, .form-row select { width: 100%; background: #f2f2f7; border: 1px solid var(--ios-border); border-radius: 8px; padding: 9px 12px; font-size: 13px; outline: none; }
-
     #scanner-video-box { width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 250px; }
   </style>
 </head>
@@ -318,13 +249,16 @@
 
   <!-- تبويب الأدوية -->
   <div id="view-home">
-    <div class="alert-banner-container" id="alerts-container"></div>
     <div class="search-wrapper">
       <div class="search-row-flex">
         <div class="search-box-rel">
           <input type="text" id="search-box" class="search-input" placeholder="🔍 ابحث بالمادة، الباركود، أو الشركة..." oninput="renderProducts()">
           <button class="camera-scan-icon-btn" onclick="openCameraScanner()" title="مسح باركود بالكاميرا">📷</button>
         </div>
+        <!-- الزر الأنيق لإظهار أو إخفاء الأدوية النافذة -->
+        <button id="toggle-out-of-stock-btn" class="btn btn-sec" style="white-space: nowrap; font-size: 12px; padding: 10px 14px; border-radius: 12px;" onclick="toggleShowOutOfStock()">
+          📦 اظهار كل الأدوية (بما فيها النافذة)
+        </button>
       </div>
       <div style="display: flex; justify-content: flex-end;">
         <button id="add-prod-btn" class="btn" style="display: none; background: var(--ios-green); font-size:12px; padding:5px 12px;" onclick="openAddModal()">+ مادة جديدة</button>
@@ -488,39 +422,10 @@
     </div>
   </div>
 
-  <!-- قالب فاتورة A4 للطباعة -->
-  <div id="invoice-a4-sheet" style="display:none; padding: 25px; font-family: Tahoma, Arial, sans-serif; direction: rtl;">
-    <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">
-      <h1 style="font-size: 20px; font-weight: bold;">مستودع سامو للأدوية والمستلزمات الطبية</h1>
-      <h3>قائمة تجهيز وصادر معتمدة</h3>
-      <div id="inv-meta-info" style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; border: 1px solid #000; padding: 6px; margin-top: 8px;"></div>
-    </div>
-    <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; text-align: right; font-size: 12px; margin-bottom: 15px;">
-      <thead>
-        <tr style="background: #e5e5e5;">
-          <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 35px;">ت</th>
-          <th style="border: 1px solid #000; padding: 6px;">اسم الدواء / المادة</th>
-          <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 50px;">العدد</th>
-          <th style="border: 1px solid #000; padding: 6px; text-align: left;">سعر المفرد</th>
-          <th style="border: 1px solid #000; padding: 6px; text-align: left;">الإجمالي</th>
-        </tr>
-      </thead>
-      <tbody id="inv-table-rows"></tbody>
-    </table>
-    <div style="display: flex; justify-content: space-between; margin-top: 15px;">
-      <div style="font-size: 13px; font-weight: bold; border: 1.5px solid #000; padding: 8px;" id="inv-total-box"></div>
-      <div style="text-align: center; font-size: 12px; font-weight: bold;">
-        <p id="inv-staff-sign">توقيع الموظف المجهز: ..........................</p>
-      </div>
-    </div>
-  </div>
-
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwT6X3nE6XO-RmcI_p_pSeNVpI4zATH3Hrp5oI-2bql6RLRowDZe_MH6_r99G4Di5ZN/exec";
     let inventory = [];
     let ordersList = [];
-    let pendingSyncOrders = [];
-    let pendingSyncProducts = [];
     let cartMap = {};
     let posCartMap = {};
     
@@ -531,6 +436,9 @@
     let currentInspectingOrderIndex = null;
     let staffChartInstance = null;
     let financialChartInstance = null;
+    
+    // متغير الحالة لإظهار أو إخفاء المواد النافذة
+    let showOutOfStockItems = false;
 
     window.addEventListener('DOMContentLoaded', () => {
       populateStaffDropdown();
@@ -610,12 +518,41 @@
       } catch(e){}
     }
 
+    // دالة تبديل عرض الأدوية النافذة
+    function toggleShowOutOfStock() {
+      showOutOfStockItems = !showOutOfStockItems;
+      const btn = document.getElementById('toggle-out-of-stock-btn');
+      if (showOutOfStockItems) {
+        btn.style.background = "var(--ios-blue)";
+        btn.style.color = "#fff";
+        btn.innerText = "📦 إخفاء الأدوية النافذة";
+      } else {
+        btn.style.background = "var(--ios-btn-sec)";
+        btn.style.color = "var(--ios-text)";
+        btn.innerText = "📦 اظهار كل الأدوية (بما فيها النافذة)";
+      }
+      renderProducts();
+    }
+
     function renderProducts() {
       const container = document.getElementById('prod-list-container');
       if (!container) return;
       const q = document.getElementById('search-box').value.trim().toLowerCase();
       let list = inventory;
-      if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)));
+
+      // إخفاء الأدوية النافذة افتراضياً ما لم يضغط الموظف على زر الإظهار
+      if (!showOutOfStockItems) {
+        list = list.filter(i => Number(i.quantity) > 0);
+      }
+
+      if (q) {
+        list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)));
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub);">لا توجد مواد مطابقة (الصنف متوفر بالكامل أو مطفأ)</div>`;
+        return;
+      }
 
       container.innerHTML = list.map(item => {
         const inCart = cartMap[item.id] || 0;
@@ -625,7 +562,7 @@
           `<div class="counter-control-wide"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><span class="counter-val-wide">${inCart}</span><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button></div>`);
 
         return `
-          <div class="prod-card">
+          <div class="prod-card" style="${isOutOfStock ? 'opacity: 0.75; border: 1.5px dashed var(--ios-red);' : ''}">
             <div class="prod-top"><div class="prod-info-col"><div class="prod-name">${item.name}</div></div></div>
             <div>${action}</div>
             <div class="prod-bottom">
@@ -660,7 +597,7 @@
       const container = document.getElementById('pos-products-grid');
       if (!container) return;
       const q = document.getElementById('pos-search-box').value.trim().toLowerCase();
-      let list = inventory;
+      let list = inventory.filter(i => Number(i.quantity) > 0); // نقطة البيع تعرض المتوفر فقط
       if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)));
 
       container.innerHTML = list.map(item => {
@@ -776,7 +713,6 @@
       const dispatchedVal = ordersList.reduce((s, o) => s + (o.totalAmount || 0), 0);
       document.getElementById('fin-dispatched-val').innerText = dispatchedVal.toLocaleString() + ' د.ع';
 
-      // رسم بياني مالي
       const finCtx = document.getElementById('financialChart').getContext('2d');
       if (financialChartInstance) financialChartInstance.destroy();
       financialChartInstance = new Chart(finCtx, {
@@ -788,7 +724,6 @@
         options: { responsive: true, plugins: { legend: { display: false } } }
       });
 
-      // تقارير الموظفين مع رسم بياني
       const staffMap = {};
       ordersList.forEach(o => {
         const staff = (o.staffName && o.staffName !== 'غير مسجل') ? o.staffName : 'غير مسجل';
@@ -851,7 +786,6 @@
       downloadCSV(csv, 'samo_staff_performance.csv');
     }
 
-    // --- الأدوار والواجهات ---
     function triggerAdmin() {
       if (isAdminUnlocked) {
         isAdminUnlocked = false;
@@ -907,7 +841,6 @@
       if (t === 'pos') renderPosGrid();
     }
 
-    // كاميرا الباركود للأدوية
     function openCameraScanner() {
       document.getElementById('modal-scanner').style.display = 'flex';
       if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
