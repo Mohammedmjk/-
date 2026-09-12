@@ -2414,34 +2414,21 @@
       }
 
       container.innerHTML = ordersList.map((o, idx) => {
-        let adminAction = '';
-        let deliverBtn = '';
+        let actionButtons = '';
 
-        if (o.status === 'معتمد للتجهيز') {
-          deliverBtn = `<button class="btn" style="padding:4px 10px; font-size:11px; background:#af52de;" onclick="markOrderAsDelivered(${idx})">تسليم الطلبية ✓</button>`;
-        }
-
-        if (isAdminUnlocked) {
-          const approveBtn = (o.status === 'قيد المراجعة' || o.status === 'جديد') 
-            ? `<button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="openInspectOrderModal(${idx})">فحص واعتماد ✓</button>`
-            : `<span style="font-size:11px; color:var(--ios-green); font-weight:bold;">مجهز: ${o.staffName || 'مسؤول'}</span>`;
-          
-          adminAction = `
-            ${approveBtn}
-            ${deliverBtn}
-            <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>
+        if (o.status === 'تم التسليم') {
+          actionButtons = `<span class="badge" style="background:#e0f2fe; color:#0369a1;">تم التسليم (المسلم: ${o.deliveredBy || 'الموظف'})</span>`;
+        } else if (o.status === 'معتمد للتجهيز') {
+          actionButtons = `
+            <button class="btn" style="padding:4px 10px; font-size:11px; background:#af52de;" onclick="markOrderAsDelivered(${idx})">تم التسليم ✓</button>
+            <span class="badge" style="background:#ecfdf5; color:#16a34a;">معتمد</span>
           `;
         } else {
-          adminAction = deliverBtn;
-        }
-
-        let statusBadge = '';
-        if (o.status === 'تم التسليم') {
-          statusBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1;">تم التسليم (المسلم: ${o.deliveredBy || 'الموظف'})</span>`;
-        } else if (o.status === 'معتمد للتجهيز') {
-          statusBadge = `<span class="badge" style="background:#ecfdf5; color:#16a34a;">معتمد (المجهز: ${o.staffName})</span>`;
-        } else {
-          statusBadge = `<span class="badge" style="background:#fff7ed; color:#ea580c;">قيد المراجعة</span>`;
+          // قيد المراجعة / جديد
+          actionButtons = `
+            <button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-blue);" onclick="openInspectOrderModal(${idx})">فحص وتعديل</button>
+            <button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="approveAndSignOrderDirect(${idx})">اعتماد ✓</button>
+          `;
         }
 
         return `
@@ -2459,14 +2446,19 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-weight:800;">
               <span style="color:var(--ios-green);">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
               <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                ${statusBadge}
                 <button class="btn btn-sec" style="padding:4px 10px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
-                ${adminAction}
+                ${actionButtons}
               </div>
             </div>
           </div>
         `;
       }).join('');
+    }
+
+    // دالة مساعدة لاعتماد الطلب مباشرة من القائمة إذا لم ترغب بفتح نافذة الفحص
+    function approveAndSignOrderDirect(idx) {
+      currentInspectingOrderIndex = idx;
+      approveAndSignOrder();
     }
 
     function renderStaffManagementView() {
