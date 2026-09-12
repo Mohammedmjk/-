@@ -2683,16 +2683,12 @@
       document.body.removeChild(a);
     }
 
-    function setMainTab(t) {
+   async function setMainTab(t) {
       document.getElementById('view-home').style.display = t === 'home' ? 'block' : 'none';
       document.getElementById('view-pos').style.display = t === 'pos' ? 'block' : 'none';
       document.getElementById('view-log').style.display = t === 'log' ? 'block' : 'none';
       document.getElementById('view-staff').style.display = t === 'staff' ? 'block' : 'none';
       document.getElementById('view-reports').style.display = t === 'reports' ? 'block' : 'none';
-
-      if (t === 'log') {
-        renderOrders();
-      }
 
       document.getElementById('tab-btn-home').classList.toggle('active', t === 'home');
       if (document.getElementById('tab-btn-pos')) {
@@ -2709,8 +2705,13 @@
       if (t === 'reports' && isAdminUnlocked) updateReportsView();
       if (t === 'staff' && isAdminUnlocked) renderStaffManagementView();
       if (t === 'pos' && isAdminUnlocked) renderPosProducts();
-      if (t === 'log') { renderOrders(); triggerSync(); }
-    }
+      
+      // عند الانتقال إلى سجل الصادر، قم بجلب البيانات المحدثة من الشيت وعرضها فوراً
+      if (t === 'log') {
+        await syncOrdersFromGoogleSheets();
+        renderOrders();
+      }
+     }
   </script>
 </body>
 </html>
