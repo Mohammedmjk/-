@@ -626,7 +626,7 @@
       </div>
 
       <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
-        <button id="add-prod-btn" class="btn" style="display: none; background: var(--ios-green); font-size:12px; padding:5px 12px;" onclick="openAddModal()">+ مادة جديدة</button>
+        <button type="button" id="add-prod-btn" class="btn" style="display: none; background: var(--ios-green); font-size:12px; padding:5px 12px;" onclick="openAddModal()">+ مادة جديدة</button>
       </div>
     </div>
 
@@ -951,7 +951,7 @@
           <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1;" onclick="printBarcodeDirectFromAdd()">🖨️ طباعة</button>
         </div>
       </div>
-      <button class="btn" style="width: 100%; justify-content: center; padding: 11px; margin-top: 6px;" onclick="saveNewMedicine()">حفظ وترحيل المادة للشيت</button>
+      <button type="button" class="btn" style="width: 100%; justify-content: center; padding: 11px; margin-top: 6px;" onclick="saveNewMedicine()">حفظ وترحيل المادة للشيت</button>
     </div>
   </div>
 
@@ -991,7 +991,41 @@
       });
     }
 
-    const API_URL = "https://script.google.com/macros/s/AKfycbwT6X3nE6XO-RmcI_p_pSeNVpI4zATH3Hrp5oI-2bql6RLRowDZe_MH6_r99G4Di5ZN/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxBNSSgmeW36NGp22xh72ehNxDni48eyUUCjyKv0hUaPzrQmmoCqZpfivNWwWF9VksP/exec";
+
+    // تحويل آمن للأرقام، ويدعم الفواصل والأرقام العربية والفارسية
+    function parseAppNumber(value) {
+      if (value === null || value === undefined || value === '') return 0;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+
+      let s = String(value).trim()
+        .replace(/,/g, '')
+        .replace(/٬/g, '')
+        .replace(/،/g, '')
+        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+        .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    async function postToApi(payload) {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await response.text();
+      let result = {};
+      try { result = JSON.parse(text); } catch (e) {}
+
+      if (!response.ok || result.status === 'error') {
+        throw new Error(result.message || ('HTTP ' + response.status));
+      }
+      return result;
+    }
+
     let inventory = [];
     let ordersList = [];
     let pendingSyncOrders = [];
@@ -1250,30 +1284,27 @@
 
       if (pendingSyncProducts.length > 0) {
         const toSyncProds = [...pendingSyncProducts];
-        for (let p of toSyncProds) {
+        for (const p of toSyncProds) {
           try {
-            await fetch(API_URL, {
-              method: 'POST', mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'add_product', product: p })
-            });
+            const action = p.id && /^PROD-\d+$/.test(String(p.id)) ? 'save_product' : 'add_product';
+            await postToApi({ action, product: p });
             pendingSyncProducts = pendingSyncProducts.filter(x => x.id !== p.id);
-          } catch(e){ break; }
+          } catch (e) {
+            break;
+          }
         }
         localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
       }
 
       if (pendingSyncOrders.length > 0) {
         const toSyncOrders = [...pendingSyncOrders];
-        for (let o of toSyncOrders) {
+        for (const o of toSyncOrders) {
           try {
-            await fetch(API_URL, {
-              method: 'POST', mode: 'no-cors',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'new_order', order: o })
-            });
+            await postToApi({ action: 'new_order', order: o });
             pendingSyncOrders = pendingSyncOrders.filter(x => x.orderNumber !== o.orderNumber);
-          } catch(err) { break; }
+          } catch (e) {
+            break;
+          }
         }
         localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
       }
@@ -1283,7 +1314,7 @@
 
     async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
-      
+
       renderAlerts();
       renderProducts();
       renderOrders();
@@ -1295,53 +1326,54 @@
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-        const res = await fetch(API_URL, { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(API_URL, { signal: controller.signal, cache: 'no-store' });
         clearTimeout(timeoutId);
-        const data = await res.json();
-        
-        let hasNewData = false;
 
-        if (data && data.products && data.products.length > 0) {
-          inventory = data.products.map(p => ({
-            id: p.id,
-            name: p.name,
-            image: p.image || '',
-            company: p.company || '',
-            form: smartDetectForm(p.name, p.form),
-            barcode: p.barcode || '',
-            quantity: Number(p.quantity) || 0,
-            minQty: Number(p.minQty) || 5,
-            price: Number(p.price) || 0,
-            totalPrice: Number(p.totalPrice) || 0,
-            bonus: Number(p.bonus) || 0,
-            expiryDate: p.expiryDate || ''
-          }));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (!data || !Array.isArray(data.products)) throw new Error('صيغة بيانات غير صحيحة من الخادم');
+
+        const remoteProducts = data.products.map(p => ({
+          id: String(p.id || ''),
+          name: String(p.name || '').trim(),
+          image: p.image || '',
+          company: String(p.company || '').trim(),
+          form: smartDetectForm(p.name, p.form),
+          barcode: String(p.barcode || '').trim(),
+          quantity: parseAppNumber(p.quantity),
+          minQty: parseAppNumber(p.minQty) || 5,
+          price: parseAppNumber(p.price),
+          totalPrice: parseAppNumber(p.totalPrice),
+          bonus: parseAppNumber(p.bonus),
+          expiryDate: p.expiryDate || ''
+        })).filter(p => p.name);
+
+        // لا نستبدل المخزون المحلي إذا عاد الخادم بقائمة فارغة.
+        if (remoteProducts.length > 0) {
+          inventory = remoteProducts;
           localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-          hasNewData = true;
         }
 
-        if (data && Array.isArray(data.orders)) {
+        if (Array.isArray(data.orders)) {
           ordersList = data.orders;
           localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-          hasNewData = true;
         }
 
-        if (hasNewData) {
-          populateCompanyDropdown();
-          renderAlerts();
-          renderProducts();
-          renderOrders();
-          renderPosProducts();
-          if (isAdminUnlocked) {
-            updateReportsView();
-            renderStaffManagementView();
-          }
+        populateCompanyDropdown();
+        renderAlerts();
+        renderProducts();
+        renderOrders();
+        renderPosProducts();
+        if (isAdminUnlocked) {
+          updateReportsView();
+          renderStaffManagementView();
         }
 
-        if (lbl) lbl.innerText = isAdminUnlocked ? "وضع صاحب المذخر (متصل سحابياً)" : "وضع الموظف (عرض وتجهيز)";
-      } catch(e) {
+        if (lbl) lbl.innerText = isAdminUnlocked
+          ? "وضع صاحب المذخر (متصل سحابياً)"
+          : "وضع الموظف (متصل سحابياً)";
+      } catch (e) {
         if (lbl) lbl.innerText = "أوفلاين (الذاكرة المحلية تعمل بكفاءة)";
       }
     }
@@ -1674,11 +1706,7 @@
 
       if (navigator.onLine) {
         try {
-          await fetch(API_URL, {
-            method: 'POST', mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'new_order', order: targetOrder })
-          });
+          await postToApi({ action: 'new_order', order: targetOrder });
         } catch(e) {
           pendingSyncOrders.push(targetOrder);
           localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
@@ -1735,56 +1763,161 @@
     }
     function closeEditModal() { document.getElementById('modal-edit-item').style.display = 'none'; }
 
-    function saveEditedMedicine() {
-      const id = document.getElementById('edit-prod-id').value;
-      const item = inventory.find(i => i.id === id);
-      if (!item) return;
+    // ===== إضافة مادة جديدة =====
+    function openAddModal() {
+      if (!isAdminUnlocked) {
+        alert("إضافة المواد متاحة فقط لصاحب المذخر. يرجى تسجيل الدخول أولاً.");
+        return;
+      }
 
-      item.name = document.getElementById('edit-name').value.trim();
-      item.image = document.getElementById('edit-image').value.trim();
-      item.company = document.getElementById('edit-company').value.trim();
-      const rawForm = document.getElementById('edit-form').value.trim();
-      item.form = smartDetectForm(item.name, rawForm);
-      item.barcode = document.getElementById('edit-barcode').value.trim();
-      item.quantity = Number(document.getElementById('edit-qty').value) || 0;
-      item.minQty = Number(document.getElementById('edit-min-qty').value) || 5;
-      item.price = Number(document.getElementById('edit-price').value) || 0;
-      item.bonus = Number(document.getElementById('edit-bonus').value) || 0;
-      item.expiryDate = document.getElementById('edit-exp').value.trim();
+      const modal = document.getElementById('modal-add-item');
+      if (!modal) {
+        alert("تعذر فتح نافذة إضافة المادة. تأكد من وجود modal-add-item في الصفحة.");
+        return;
+      }
 
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      closeEditModal();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-      updateReportsView();
+      // إعادة القيم الافتراضية عند فتح نافذة الإضافة
+      const defaults = {
+        'in-qty': '10',
+        'in-min-qty': '5',
+        'in-price': '5000',
+        'in-bonus': '0'
+      };
 
-      fetch(API_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add_product', product: item })
-      }).catch(() => {});
+      Object.entries(defaults).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = value;
+      });
 
-      alert("تم تحديث وتعديل بيانات المادة بنجاح وتزامنها مع الشيت!");
+      calcBonusNet();
+      modal.style.display = 'flex';
+
+      setTimeout(() => {
+        const nameInput = document.getElementById('in-name');
+        if (nameInput) nameInput.focus();
+      }, 100);
     }
 
-    function deleteMedicine(id) {
-      const item = inventory.find(i => i.id === id);
-      if (!item) return;
+    function closeAddModal() {
+      const modal = document.getElementById('modal-add-item');
+      if (modal) modal.style.display = 'none';
+    }
 
-      if (confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) {
-        inventory = inventory.filter(i => i.id !== id);
-        delete cartMap[id];
-        delete posCartMap[id];
+    async function saveNewMedicine() {
+      const name = document.getElementById('in-name').value.trim();
+      if (!name) return alert('يرجى إدخال اسم المادة.');
+
+      const item = {
+        id: 'NEW-' + Date.now(),
+        name,
+        image: document.getElementById('in-image').value.trim(),
+        company: document.getElementById('in-company').value.trim(),
+        form: smartDetectForm(name, document.getElementById('in-form').value.trim()),
+        barcode: document.getElementById('in-barcode').value.trim(),
+        quantity: parseAppNumber(document.getElementById('in-qty').value),
+        minQty: parseAppNumber(document.getElementById('in-min-qty').value) || 5,
+        price: parseAppNumber(document.getElementById('in-price').value),
+        bonus: parseAppNumber(document.getElementById('in-bonus').value),
+        expiryDate: document.getElementById('in-exp').value.trim()
+      };
+      item.totalPrice = item.quantity * item.price;
+
+      try {
+        const result = await postToApi({ action: 'add_product', product: item });
+        if (result.product) item.id = result.product.id;
+
+        inventory.push(item);
         localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
         populateCompanyDropdown();
         renderAlerts();
         renderProducts();
         renderPosProducts();
         if (isAdminUnlocked) updateReportsView();
-        alert(`تم حذف دواء ${item.name} بنجاح.`);
+
+        closeAddModal();
+        document.getElementById('in-name').value = '';
+        document.getElementById('in-image').value = '';
+        document.getElementById('in-company').value = '';
+        document.getElementById('in-barcode').value = '';
+        document.getElementById('in-qty').value = '10';
+        document.getElementById('in-min-qty').value = '5';
+        document.getElementById('in-price').value = '5000';
+        document.getElementById('in-bonus').value = '0';
+        document.getElementById('in-exp').value = '';
+        alert('تمت إضافة المادة وحفظها في Google Sheets بنجاح.');
+      } catch (e) {
+        pendingSyncProducts.push(item);
+        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
+        inventory.push(item);
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+        closeAddModal();
+        renderProducts();
+        renderPosProducts();
+        alert('تمت إضافة المادة محلياً، وسيتم ترحيلها للشيت عند نجاح المزامنة.');
       }
+    }
+
+    async function saveEditedMedicine() {
+      const id = document.getElementById('edit-prod-id').value;
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+
+      item.name = document.getElementById('edit-name').value.trim();
+      if (!item.name) return alert('يرجى إدخال اسم المادة.');
+      item.image = document.getElementById('edit-image').value.trim();
+      item.company = document.getElementById('edit-company').value.trim();
+      const rawForm = document.getElementById('edit-form').value.trim();
+      item.form = smartDetectForm(item.name, rawForm);
+      item.barcode = document.getElementById('edit-barcode').value.trim();
+      item.quantity = parseAppNumber(document.getElementById('edit-qty').value);
+      item.minQty = parseAppNumber(document.getElementById('edit-min-qty').value) || 5;
+      item.price = parseAppNumber(document.getElementById('edit-price').value);
+      item.bonus = parseAppNumber(document.getElementById('edit-bonus').value);
+      item.totalPrice = item.quantity * item.price;
+      item.expiryDate = document.getElementById('edit-exp').value.trim();
+
+      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+      populateCompanyDropdown();
+      renderAlerts();
+      renderProducts();
+      renderPosProducts();
+      if (isAdminUnlocked) updateReportsView();
+
+      try {
+        await postToApi({ action: 'save_product', product: item });
+        closeEditModal();
+        await loadRemoteData();
+        alert('تم تحديث بيانات المادة وحفظها في Google Sheets بنجاح.');
+      } catch (e) {
+        if (!pendingSyncProducts.some(x => x.id === item.id)) pendingSyncProducts.push({ ...item });
+        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
+        closeEditModal();
+        alert('تم حفظ التعديل محلياً، وسيتم ترحيله إلى الشيت عند نجاح المزامنة.');
+      }
+    }
+
+    async function deleteMedicine(id) {
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+
+      if (!confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) return;
+
+      try {
+        await postToApi({ action: 'delete_product', productId: id });
+      } catch (e) {
+        return alert('تعذر حذف المادة من Google Sheets: ' + e.message);
+      }
+
+      inventory = inventory.filter(i => i.id !== id);
+      delete cartMap[id];
+      delete posCartMap[id];
+      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+      populateCompanyDropdown();
+      renderAlerts();
+      renderProducts();
+      renderPosProducts();
+      if (isAdminUnlocked) updateReportsView();
+      alert(`تم حذف دواء ${item.name} بنجاح.`);
     }
 
     function modifyCartQty(prodId, delta) {
@@ -1930,11 +2063,7 @@
 
       if (navigator.onLine) {
         try {
-          await fetch(API_URL, {
-            method: 'POST', mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'new_order', order: targetOrder })
-          });
+          await postToApi({ action: 'new_order', order: targetOrder });
         } catch(e) {
           pendingSyncOrders.push(targetOrder);
           localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
@@ -2003,11 +2132,7 @@
       renderOrders();
       updateReportsView();
 
-      fetch(API_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'new_order', order: o })
-      }).catch(() => {});
+      postToApi({ action: 'new_order', order: o }).catch(() => {});
 
       alert(`تم اعتماد الطلبية بنجاح وتثبيت اسم المجهز: ${o.staffName}`);
     }
@@ -2028,11 +2153,7 @@
         renderStaffManagementView();
       }
 
-      fetch(API_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'new_order', order: o })
-      }).catch(() => {});
+      postToApi({ action: 'new_order', order: o }).catch(() => {});
 
       alert(`تم تسجيل تسليم الطلبية بنجاح بواسطة المستخدم: ${activeStaffName}`);
     }
@@ -2059,11 +2180,7 @@
         renderPosProducts();
         if (isAdminUnlocked) updateReportsView();
 
-        fetch(API_URL, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'delete_order', orderNumber: o.orderNumber, updatedInventory: inventory })
-        }).catch(() => {});
+        postToApi({ action: 'delete_order', orderNumber: o.orderNumber }).catch(err => alert('تعذر مزامنة حذف الطلبية: ' + err.message));
 
         alert(`تم حذف الطلبية وإرجاع الكميات إلى المخزن بنجاح.`);
       }
