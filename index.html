@@ -1354,41 +1354,38 @@
       amountEl.innerText = amount.toLocaleString() + ' د.ع';
     }
 
-  async function triggerSync() { 
-      const lbl = document.getElementById('conn-lbl'); 
-      if (lbl) lbl.innerText = "جاري مزامنة السحابة..."; 
+    async function triggerSync() {
+      const lbl = document.getElementById('conn-lbl');
+      if (lbl) lbl.innerText = "جاري مزامنة السحابة...";
 
-      // 1. مزامنة المنتجات المعلقة
-      if (pendingSyncProducts.length > 0) { 
-        let remainingProds = [];
-        for (const p of [...pendingSyncProducts]) { 
-          try { 
-            const action = p.id && /^PROD-\d+$/.test(String(p.id)) ? 'save_product' : 'add_product'; 
-            await postToApi({ action, product: p }); 
-          } catch (e) { 
-            remainingProds.push(p); 
-          } 
-        } 
-        pendingSyncProducts = remainingProds;
-        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts)); 
-      } 
+      if (pendingSyncProducts.length > 0) {
+        const toSyncProds = [...pendingSyncProducts];
+        for (const p of toSyncProds) {
+          try {
+            const action = p.id && /^PROD-\d+$/.test(String(p.id)) ? 'save_product' : 'add_product';
+            await postToApi({ action, product: p });
+            pendingSyncProducts = pendingSyncProducts.filter(x => x.id !== p.id);
+          } catch (e) {
+            break;
+          }
+        }
+        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
+      }
 
-      // 2. مزامنة الطلبات المعلقة في الأوفلاين
-      if (pendingSyncOrders.length > 0) { 
-        let remainingOrders = [];
-        for (const o of [...pendingSyncOrders]) { 
-          try { 
-            await postToApi({ action: 'new_order', order: o }); 
-          } catch (e) { 
-            remainingOrders.push(o); 
-          } 
-        } 
-        pendingSyncOrders = remainingOrders;
-        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders)); 
-      } 
- 
-      await loadRemoteData(); 
-      alert("تمت عملية المزامنة بنجاح وتحديث البيانات!");
+      if (pendingSyncOrders.length > 0) {
+        const toSyncOrders = [...pendingSyncOrders];
+        for (const o of toSyncOrders) {
+          try {
+            await postToApi({ action: 'new_order', order: o });
+            pendingSyncOrders = pendingSyncOrders.filter(x => x.orderNumber !== o.orderNumber);
+          } catch (e) {
+            break;
+          }
+        }
+        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
+      }
+
+      await loadRemoteData();
     }
 
    async function syncOrdersFromGoogleSheets() {
@@ -2186,60 +2183,45 @@
       alert(`تم إرسال طلب صيدلية ${ph} بنجاح!`); 
     }
 
-  function openInspectOrderModal(idx) { 
-      currentInspectingOrderIndex = idx; 
-      const o = ordersList[idx]; 
-      document.getElementById('inspect-modal-title').innerText = `فحص وتعديل الطلبية (${o.orderNumber}) - ${o.pharmacyName}`; 
-       
-      const box = document.getElementById('inspect-order-items-box'); 
+    function openInspectOrderModal(idx) {
+      currentInspectingOrderIndex = idx;
+      const o = ordersList[idx];
+      document.getElementById('inspect-modal-title').innerText = `فحص وتعديل الطلبية (${o.orderNumber}) - ${o.pharmacyName}`;
       
-      if (!o.items || o.items.length === 0) { 
-        box.innerHTML = `<div style="text-align:center; padding:20px; color:var(--ios-sub);">لا توجد مواد مسجلة في هذا الطلب أو أن صيغة البيانات بحاجة لتحديث.</div>`; 
-      } else { 
-        box.innerHTML = o.items.map((it, i) => { 
-          // استخراج اسم المادة والكمية بشكل آمن بغض النظر عن اختلاف المفاتيح
-          const itemName = it.name || it.productName || it[Object.keys(it).find(k => k.toLowerCase().includes('name'))] || 'مادة غير معروفة';
-          const itemQty = Number(it.quantity || it.qty || it[Object.keys(it).find(k => k.toLowerCase().includes('qt'))] || 1);
-          const itemPrice = Number(it.price || 0);
+      const box = document.getElementById('inspect-order-items-box');
+      box.innerHTML = (o.items || []).map((it, i) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #eee; font-size:13px;">
+          <div style="flex:1;"><b>${it.name}</b><br><span style="color:var(--ios-sub);">${it.price.toLocaleString()} د.ع</span></div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span>العدد:</span>
+            <input type="number" id="inspect-qty-${i}" value="${it.quantity}" style="width:60px; padding:4px; text-align:center; border:1px solid #ccc; border-radius:6px;">
+            <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="removeInspectItem(${idx}, ${i})">رفض/حذف</button>
+          </div>
+        </div>
+      `).join('');
 
-          return ` 
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:0.5px solid var(--ios-border); font-size:13px;"> 
-              <div style="flex:1; padding-left:8px;"> 
-                <b style="color:#111;">${itemName}</b><br> 
-                <span style="color:var(--ios-sub); font-size:11px;">${itemPrice.toLocaleString()} د.ع</span> 
-              </div> 
-              <div style="display:flex; align-items:center; gap:6px;"> 
-                <button class="counter-btn" style="width:28px; height:28px; font-size:16px; background:var(--ios-blue); color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="changeInspectItemQty(${idx}, ${i}, -1)">-</button> 
-                <input type="number" id="inspect-qty-${i}" value="${itemQty}" style="width:50px; padding:4px; text-align:center; border:1px solid var(--ios-border); border-radius:6px; font-weight:800;" onchange="updateInspectItemQtyDirect(${idx}, ${i}, this.value)"> 
-                <button class="counter-btn" style="width:28px; height:28px; font-size:16px; background:var(--ios-blue); color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="changeInspectItemQty(${idx}, ${i}, 1)">+</button> 
-                <button class="btn btn-danger" style="padding:5px 8px; font-size:11px;" onclick="removeInspectItem(${idx}, ${i})">حذف</button> 
-              </div> 
-            </div> 
-          `; 
-        }).join(''); 
-      } 
- 
-      document.getElementById('modal-inspect-order').style.display = 'flex'; 
-    } 
+      document.getElementById('modal-inspect-order').style.display = 'flex';
+    }
+    function closeInspectModal() { document.getElementById('modal-inspect-order').style.display = 'none'; }
 
-    function changeInspectItemQty(orderIdx, itemIdx, delta) { 
-      const o = ordersList[orderIdx]; 
-      if (o && o.items && o.items[itemIdx]) { 
-        let currentQty = Number(o.items[itemIdx].quantity || o.items[itemIdx].qty || 1); 
-        let nextQty = currentQty + delta; 
-        if (nextQty < 1) nextQty = 1; 
-        o.items[itemIdx].quantity = nextQty; 
-        openInspectOrderModal(orderIdx); 
-      } 
+    function removeInspectItem(orderIdx, itemIdx) {
+      ordersList[orderIdx].items.splice(itemIdx, 1);
+      openInspectOrderModal(orderIdx);
     }
 
-    function updateInspectItemQtyDirect(orderIdx, itemIdx, val) { 
-      const o = ordersList[orderIdx]; 
-      if (o && o.items && o.items[itemIdx]) { 
-        let q = parseInt(val, 10); 
-        o.items[itemIdx].quantity = isNaN(q) || q < 1 ? 1 : q; 
-      } 
-    }
+    function approveAndSignOrder() {
+      if (currentInspectingOrderIndex === null) return;
+      const o = ordersList[currentInspectingOrderIndex];
+
+      (o.items || []).forEach((it, i) => {
+        const input = document.getElementById(`inspect-qty-${i}`);
+        if (input) {
+          it.quantity = Math.max(0, parseInt(input.value, 10) || 0);
+        }
+      });
+
+      o.items = o.items.filter(it => it.quantity > 0);
+      o.totalAmount = o.items.reduce((s, it) => s + (it.price * it.quantity), 0);
 
       if (!activeStaffName) {
         return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمجهز معتمد للطلبية!");
