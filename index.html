@@ -2,169 +2,104 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مذخر سامو | نظام إدارة وتوزيع الأدوية</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }</style>
-</head>
-<body class="text-slate-800 antialiased min-h-screen flex flex-col">
-  <!-- Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow"><i class="fa-solid fa-mortar-pestle"></i></div>
-        <div>
-          <h1 class="text-lg font-black text-slate-900 leading-tight">مَذْخَر سامو</h1>
-          <p class="text-xs text-slate-500 font-medium">نظام التوزيع وإدارة المخزون والطلبات</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <span id="syncBadge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> متزامن
-        </span>
-        <button onclick="syncData()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition" title="مزامنة الآن"><i id="syncIcon" class="fa-solid fa-arrows-rotate text-emerald-600"></i></button>
-        <button onclick="toggleSettings()" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition" title="إعدادات الربط"><i class="fa-solid fa-gear"></i></button>
-        <button onclick="setTab('cart')" class="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow transition">
-          <i class="fa-solid fa-cart-shopping"></i>
-          <span class="hidden sm:inline">السلة</span>
-          <span id="cartBadge" class="bg-white text-emerald-800 text-[11px] px-1.5 py-0.2 rounded-full font-black">0</span>
-        </button>
-      </div>
-    </div>
-    <!-- Tabs Navigation -->
-    <nav class="max-w-7xl mx-auto px-4 flex border-t border-slate-100 overflow-x-auto text-xs sm:text-sm font-bold">
-      <button onclick="setTab('products')" id="tab-btn-products" class="tab-btn px-4 py-2.5 border-b-2 border-emerald-600 text-emerald-700 flex items-center gap-1.5"><i class="fa-solid fa-pills"></i> الأدوية والمخزون (<span id="count-products">0</span>)</button>
-      <button onclick="setTab('companies')" id="tab-btn-companies" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5"><i class="fa-solid fa-building"></i> الشركات والوكالات (<span id="count-companies">0</span>)</button>
-      <button onclick="setTab('cart')" id="tab-btn-cart" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5"><i class="fa-solid fa-file-invoice"></i> إنشاء طلب جديد</button>
-      <button onclick="setTab('orders')" id="tab-btn-orders" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5"><i class="fa-solid fa-clipboard-list"></i> سجل الطلبات (<span id="count-orders">0</span>)</button>
-      <button onclick="setTab('reports')" id="tab-btn-reports" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-1.5"><i class="fa-solid fa-chart-pie"></i> التقارير والإحصائيات</button>
-    </nav>
-  </header>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>مستودع سامو للأدوية</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icon-512.png">
+  <link rel="apple-touch-icon" href="./icon-512.png">
+  <meta name="theme-color" content="#007aff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="سامو للأدوية">
+  
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    :root {
+      --ios-bg: #f2f2f7;
+      --ios-card: #ffffff;
+      --ios-text: #000000;
+      --ios-sub: #8e8e93;
+      --ios-blue: #007aff;
+      --ios-green: #34c759;
+      --ios-red: #ff3b30;
+      --ios-orange: #ff9500;
+      --ios-purple: #af52de;
+      --ios-border: #e5e5ea;
+      --ios-btn-sec: #e5e5ea;
+    }
 
-  <!-- Main Container -->
-  <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1">
-    <!-- 1. Products Tab -->
-    <section id="view-products" class="space-y-4">
-      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3">
-        <div class="flex-1 relative">
-          <i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-slate-400"></i>
-          <input type="text" id="searchInput" oninput="filterProducts()" placeholder="ابحث باسم المادة، الشركة، أو الباركود..." class="w-full pr-9 pl-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-        </div>
-        <select id="companyFilter" onchange="filterProducts()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
-          <option value="">جميع الشركات</option>
-        </select>
-        <select id="stockFilter" onchange="filterProducts()" class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold">
-          <option value="all">كل المواد</option>
-          <option value="available" selected>المتوفر فقط (> 0)</option>
-          <option value="bonus">عروض البونص</option>
-          <option value="expiring">قريب الصلاحية (< 6 أشهر)</option>
-        </select>
-      </div>
-      <div id="productsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-    </section>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-    <!-- 2. Companies Tab -->
-    <section id="view-companies" class="hidden space-y-4">
-      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <h2 class="text-base font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-building text-emerald-600"></i> دليل الشركات والوكالات المسجلة</h2>
-        <p class="text-xs text-slate-500 mt-0.5">تصفح الشركات وإحصائيات المخزون وعروض البونص مع إمكانية التصفية المباشرة</p>
-      </div>
-      <div id="companiesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-    </section>
+    body {
+      background-color: var(--ios-bg);
+      color: var(--ios-text);
+      padding-bottom: 95px;
+    }
 
-    <!-- 3. Cart Tab -->
-    <section id="view-cart" class="hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h3 class="text-sm font-black text-slate-800 border-b pb-2 flex items-center gap-2"><i class="fa-solid fa-hospital text-emerald-600"></i> بيانات الصيدلية المستلمة</h3>
-          <div>
-            <label class="block text-xs font-bold mb-1">اسم الصيدلية *</label>
-            <input type="text" id="orderPharmacy" placeholder="صيدلية المشرق..." class="w-full p-2.5 bg-slate-50 border rounded-xl text-sm font-semibold focus:ring-2 focus:ring-emerald-500">
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-bold mb-1">اسم المستلم</label>
-              <input type="text" id="orderPharmacist" placeholder="د. علي" class="w-full p-2 bg-slate-50 border rounded-xl text-xs">
-            </div>
-            <div>
-              <label class="block text-xs font-bold mb-1">رقم الهاتف</label>
-              <input type="tel" id="orderPhone" placeholder="0780..." class="w-full p-2 bg-slate-50 border rounded-xl text-xs">
-            </div>
-          </div>
-          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs font-bold">
-            <div class="flex justify-between text-slate-600"><span>عدد الأصناف:</span><span id="cartItemsCount">0</span></div>
-            <div class="flex justify-between text-slate-600"><span>إجمالي القطع:</span><span id="cartPiecesCount">0</span></div>
-            <div class="border-t pt-2 flex justify-between text-base font-black text-emerald-700"><span>المجموع الكلي:</span><span id="cartGrandTotal">0 د.ع</span></div>
-          </div>
-          <button onclick="sendOrder()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-sm shadow flex items-center justify-center gap-2 transition">
-            <i class="fa-solid fa-paper-plane"></i> إرسال وتوثيق الطلب
-          </button>
-        </div>
-        <div class="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div class="flex justify-between items-center border-b pb-3 mb-4">
-            <h3 class="text-sm font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-emerald-600"></i> المواد المضافة</h3>
-            <button onclick="clearCart()" class="text-xs text-rose-600 font-bold hover:underline"><i class="fa-solid fa-trash"></i> تفريغ السلة</button>
-          </div>
-          <div id="cartList" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
-        </div>
-      </div>
-    </section>
+    header {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 0.5px solid rgba(0,0,0,0.15);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-title { font-size: 17px; font-weight: 700; }
+    .header-sub { font-size: 11px; color: var(--ios-sub); }
 
-    <!-- 4. Orders Tab -->
-    <section id="view-orders" class="hidden space-y-4">
-      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
-        <div>
-          <h2 class="text-base font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-clipboard-check text-emerald-600"></i> سجل طلبات الصيدليات</h2>
-          <p class="text-xs text-slate-500 mt-0.5">متابعة الحالات وتحديث التجهيز وطباعة الفواتير</p>
-        </div>
-        <select id="orderStatusFilter" onchange="renderOrders()" class="py-2 px-3 bg-slate-50 border rounded-xl text-xs font-semibold">
-          <option value="">جميع الحالات</option>
-          <option value="قيد المراجعة">قيد المراجعة</option>
-          <option value="معتمد للتجهيز">معتمد للتجهيز</option>
-          <option value="تم التسليم">تم التسليم</option>
-        </select>
-      </div>
-      <div id="ordersList" class="space-y-3"></div>
-    </section>
+    .btn {
+      background: var(--ios-blue);
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-sec { background: var(--ios-btn-sec); color: var(--ios-text); }
+    .btn-danger { background: #ffe5e5; color: var(--ios-red); }
+    .btn-admin { background: #3a3a3c; }
 
-    <!-- 5. Reports Tab -->
-    <section id="view-reports" class="hidden space-y-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-4 rounded-2xl border shadow-sm flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl"><i class="fa-solid fa-sack-dollar"></i></div>
-          <div><p class="text-xs text-slate-400 font-bold">إجمالي المبيعات</p><h3 id="repTotalSales" class="text-base font-black text-slate-900 mt-0.5">0 د.ع</h3></div>
-        </div>
-        <div class="bg-white p-4 rounded-2xl border shadow-sm flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl"><i class="fa-solid fa-cart-flatbed"></i></div>
-          <div><p class="text-xs text-slate-400 font-bold">الطلبات المسجلة</p><h3 id="repOrdersCount" class="text-base font-black text-slate-900 mt-0.5">0</h3></div>
-        </div>
-        <div class="bg-white p-4 rounded-2xl border shadow-sm flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl"><i class="fa-solid fa-warehouse"></i></div>
-          <div><p class="text-xs text-slate-400 font-bold">قيمة بضاعة المخزن</p><h3 id="repStockValue" class="text-base font-black text-slate-900 mt-0.5">0 د.ع</h3></div>
-        </div>
-        <div class="bg-white p-4 rounded-2xl border shadow-sm flex items-center gap-3">
-          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl"><i class="fa-solid fa-calendar-xmark"></i></div>
-          <div><p class="text-xs text-slate-400 font-bold">قريب الانتهاء (< 6 ش)</p><h3 id="repExpiringCount" class="text-base font-black text-amber-600 mt-0.5">0 صنف</h3></div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl border shadow-sm overflow-hidden">
-        <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
-          <h3 class="text-sm font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i> تقرير الأدوية القريبة من الانتهاء (أقل من 6 أشهر)</h3>
-          <button onclick="exportExpiringCSV()" class="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100"><i class="fa-solid fa-file-csv"></i> تصدير CSV</button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-right text-xs">
-            <thead class="bg-slate-100 text-slate-600 border-b">
-              <tr>
-                <th class="py-2.5 px-4">اسم الدواء</th>
-                <th class="py-2.5 px-3">الشركة</th>
-                <th class="py-2.5 px-3">العدد بالمخزن</th>
-                <th class="py-2.5 px-3">سعر المفرد</th>
-                <th class="py-2.5 px-3">تاريخ الانتهاء</th>
-                <th class="py-2.5 px-3
+    .tabs-bar {
+      display: flex;
+      background: #e3e3e8;
+      border-radius: 10px;
+      padding: 3px;
+      margin: 12px 16px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+      overflow-x: auto;
+    }
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #3a3a3c;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .tab-item.active {
+      background: #ffffff;
+      color: #000;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12);
     }
 
     .alert-banner-container {
@@ -603,6 +538,7 @@
       <div id="conn-lbl" class="header-sub">وضع الموظف (عرض وتجهيز)</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
+      <!-- قائمة منسدلة أنيقة لاختيار المستخدم تظهر حصرياً لصاحب المذخر -->
       <div id="admin-header-user-picker" style="display: none; align-items: center; gap: 4px; background: #e0f2fe; padding: 4px 10px; border-radius: 16px; border: 1px solid #bae6fd;">
         <span style="font-size: 12px; color: #0369a1; font-weight: 700;">👤 المستخدم:</span>
         <select id="staff-name-select" onchange="onStaffSelected(this.value)" style="background: transparent; border: none; font-size: 12px; color: #0369a1; font-weight: 800; outline: none; cursor: pointer;">
@@ -780,29 +716,6 @@
         <div class="fin-title">إجمالي مبالغ المصروف</div>
         <div id="fin-dispatched-val" class="fin-amount" style="color: var(--ios-blue);">0 د.ع</div>
         <div class="mini-chart"><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 100%;"></div></div>
-      </div>
-    </div>
-
-    <!-- صندوق تقرير الشركات المحدث (قائمة منسدلة + حقلي العدد والمبلغ) -->
-    <div class="chart-box" style="margin: 0 16px 14px; background: #fff; padding: 16px; border-radius: 12px; border: 1px solid var(--ios-border);">
-      <div style="font-size: 15px; font-weight: 800; color: var(--ios-blue); margin-bottom: 10px;">🏢 تقرير الشركات المصنعة (العدد والمبالغ):</div>
-      
-      <div class="form-row" style="margin-bottom: 12px;">
-        <label>اختر اسم الشركة:</label>
-        <select id="report-company-select" onchange="onReportCompanySelected(this.value)" style="width: 100%; background: #f2f2f7; border: 1px solid var(--ios-border); border-radius: 8px; padding: 9px 12px; font-size: 13px; font-weight: 700; outline: none;">
-          <option value="">-- اختر شركة لعرض بياناتها --</option>
-        </select>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div style="background: #f8fafc; border: 1px solid var(--ios-border); padding: 12px; border-radius: 10px; text-align: center;">
-          <div style="font-size: 11px; font-weight: 600; color: var(--ios-sub);">عدد القطع (الايتمات):</div>
-          <div id="report-comp-items-qty" style="font-size: 18px; font-weight: 900; color: var(--ios-blue); margin-top: 4px;">0</div>
-        </div>
-        <div style="background: #f8fafc; border: 1px solid var(--ios-border); padding: 12px; border-radius: 10px; text-align: center;">
-          <div style="font-size: 11px; font-weight: 600; color: var(--ios-sub);">المبلغ الإجمالي:</div>
-          <div id="report-comp-total-val" style="font-size: 18px; font-weight: 900; color: var(--ios-green); margin-top: 4px;">0 د.ع</div>
-        </div>
       </div>
     </div>
 
@@ -1104,24 +1017,13 @@
       populateStaffDropdown();
       updateStaffBadgeUI();
       
-      const localStock = localStorage.getItem('samo_inventory_v39');
-      if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
-      const localOrders = localStorage.getItem('samo_orders_v39');
-      if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
-
-      populateCompanyDropdown();
-      renderAlerts();
-      renderProducts();
-      renderOrders();
-      renderPosProducts();
-
       if (isAdminUnlocked) {
         unlockAdminUI(true);
       } else {
         lockAdminUI(true);
       }
 
-      loadRemoteData();
+      initSystem();
 
       window.addEventListener('click', () => {
         document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
@@ -1131,7 +1033,7 @@
     function populateStaffDropdown() {
       const select = document.getElementById('staff-name-select');
       if (!select) return;
-      select.innerHTML = '<option value="">اختر...</option>' +
+      select.innerHTML = '<option value="">اختر المستخدم...</option>' +
         staffNamesList.map(name => `<option value="${name}" ${name === activeStaffName ? 'selected' : ''}>${name}</option>`).join('');
     }
 
@@ -1286,7 +1188,7 @@
       if (parts.length < 2) return 'valid';
       const year = parseInt(parts[0]);
       const month = parseInt(parts[1]) - 1;
-        
+      
       const expDate = new Date(year, month, 1);
       const now = new Date();
       const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1337,7 +1239,7 @@
       });
 
       const sortedCompanies = Array.from(companySet.values()).sort((a, b) => a.localeCompare(b, 'ar'));
-        
+      
       select.innerHTML = '<option value="">-- جميع الشركات --</option>' +
         sortedCompanies.map(c => `<option value="${c}">${c}</option>`).join('');
     }
@@ -1381,7 +1283,7 @@
 
     async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
-        
+      
       renderAlerts();
       renderProducts();
       renderOrders();
@@ -1398,7 +1300,7 @@
         const res = await fetch(API_URL, { signal: controller.signal });
         clearTimeout(timeoutId);
         const data = await res.json();
-          
+        
         let hasNewData = false;
 
         if (data && data.products && data.products.length > 0) {
@@ -1793,7 +1695,6 @@
       renderProducts();
       renderOrders();
       alert(`تم إرسال واعتماد طلب صيدلية ${ph} بنجاح عبر نقطة البيع (POS) بواسطة المستخدم (${activeStaffName})!`);
-      setMainTab('log');
     }
 
     function promptDirectCartQty(prodId) {
@@ -1813,6 +1714,76 @@
           }
           renderProducts();
         }
+      }
+    }
+
+    function openEditItemModal(id) {
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+      document.getElementById('edit-prod-id').value = item.id;
+      document.getElementById('edit-name').value = item.name;
+      document.getElementById('edit-image').value = item.image || '';
+      document.getElementById('edit-company').value = item.company || '';
+      document.getElementById('edit-form').value = item.form || 'Tablet';
+      document.getElementById('edit-barcode').value = item.barcode || '';
+      document.getElementById('edit-qty').value = item.quantity;
+      document.getElementById('edit-min-qty').value = item.minQty || 5;
+      document.getElementById('edit-price').value = item.price;
+      document.getElementById('edit-bonus').value = item.bonus || 0;
+      document.getElementById('edit-exp').value = item.expiryDate || '';
+      document.getElementById('modal-edit-item').style.display = 'flex';
+    }
+    function closeEditModal() { document.getElementById('modal-edit-item').style.display = 'none'; }
+
+    function saveEditedMedicine() {
+      const id = document.getElementById('edit-prod-id').value;
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+
+      item.name = document.getElementById('edit-name').value.trim();
+      item.image = document.getElementById('edit-image').value.trim();
+      item.company = document.getElementById('edit-company').value.trim();
+      const rawForm = document.getElementById('edit-form').value.trim();
+      item.form = smartDetectForm(item.name, rawForm);
+      item.barcode = document.getElementById('edit-barcode').value.trim();
+      item.quantity = Number(document.getElementById('edit-qty').value) || 0;
+      item.minQty = Number(document.getElementById('edit-min-qty').value) || 5;
+      item.price = Number(document.getElementById('edit-price').value) || 0;
+      item.bonus = Number(document.getElementById('edit-bonus').value) || 0;
+      item.expiryDate = document.getElementById('edit-exp').value.trim();
+
+      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+      populateCompanyDropdown();
+      closeEditModal();
+      renderAlerts();
+      renderProducts();
+      renderPosProducts();
+      updateReportsView();
+
+      fetch(API_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_product', product: item })
+      }).catch(() => {});
+
+      alert("تم تحديث وتعديل بيانات المادة بنجاح وتزامنها مع الشيت!");
+    }
+
+    function deleteMedicine(id) {
+      const item = inventory.find(i => i.id === id);
+      if (!item) return;
+
+      if (confirm(`هل أنت متأكد من حذف دواء "${item.name}" نهائياً من المستودع؟`)) {
+        inventory = inventory.filter(i => i.id !== id);
+        delete cartMap[id];
+        delete posCartMap[id];
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+        populateCompanyDropdown();
+        renderAlerts();
+        renderProducts();
+        renderPosProducts();
+        if (isAdminUnlocked) updateReportsView();
+        alert(`تم حذف دواء ${item.name} بنجاح.`);
       }
     }
 
@@ -1985,7 +1956,7 @@
       currentInspectingOrderIndex = idx;
       const o = ordersList[idx];
       document.getElementById('inspect-modal-title').innerText = `فحص وتعديل الطلبية (${o.orderNumber}) - ${o.pharmacyName}`;
-        
+      
       const box = document.getElementById('inspect-order-items-box');
       box.innerHTML = (o.items || []).map((it, i) => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #eee; font-size:13px;">
@@ -2046,7 +2017,7 @@
       if (!activeStaffName) {
         return alert("يرجى اختيار اسمك من القائمة العلوية لتثبيته كمسلم للطلبية!");
       }
-        
+      
       o.status = 'تم التسليم';
       o.deliveredBy = activeStaffName;
 
@@ -2081,7 +2052,7 @@
 
         ordersList.splice(idx, 1);
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-         
+        
         renderOrders();
         renderAlerts();
         renderProducts();
@@ -2136,11 +2107,11 @@
 
     function openDirectBarcodeModal(name, barcode, price) {
       currentBarcodeData = { name, barcode: barcode || ("880" + Math.floor(10000000 + Math.random() * 90000000)), price };
-       
+      
       document.getElementById('prev-barcode-name').innerText = currentBarcodeData.name;
       document.getElementById('prev-barcode-num').innerText = currentBarcodeData.barcode;
       document.getElementById('prev-barcode-price').innerText = `السعر: ${Number(currentBarcodeData.price).toLocaleString()} د.ع`;
-       
+      
       document.getElementById('prev-barcode-svg').innerHTML = `
         <svg width="180" height="45" viewBox="0 0 140 40" style="display:block; margin:auto;">
           <rect x="2" y="0" width="2" height="40" fill="#000"/><rect x="6" y="0" width="3" height="40" fill="#000"/>
@@ -2172,7 +2143,7 @@
       const heightMm = orientation === 'landscape' ? '38mm' : '72mm';
 
       const printWindow = window.open('', '_blank', 'width=400,height=300');
-       
+      
       printWindow.document.write(`
         <html lang="ar" dir="rtl">
         <head>
@@ -2256,7 +2227,7 @@
           const approveBtn = (o.status === 'قيد المراجعة' || o.status === 'جديد') 
             ? `<button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="openInspectOrderModal(${idx})">فحص واعتماد ✓</button>`
             : `<span style="font-size:11px; color:var(--ios-green); font-weight:bold;">مجهز: ${o.staffName || 'مسؤول'}</span>`;
-           
+          
           adminAction = `
             ${approveBtn}
             ${deliverBtn}
@@ -2430,40 +2401,6 @@
         .filter(o => o.status === 'معتمد للتجهيز' || o.status === 'تم التسليم')
         .reduce((s, o) => s + (o.totalAmount || 0), 0);
       document.getElementById('fin-dispatched-val').innerText = dispatchedVal.toLocaleString() + ' د.ع';
-
-      populateReportCompanyDropdown();
-    }
-
-    function populateReportCompanyDropdown() {
-      const select = document.getElementById('report-company-select');
-      if (!select) return;
-      const set = new Map();
-      inventory.forEach(p => {
-        const c = (p.company || '').trim();
-        if (c) set.set(c.toLowerCase(), c);
-      });
-      const arr = Array.from(set.values()).sort((a,b) => a.localeCompare(b, 'ar'));
-      select.innerHTML = '<option value="">-- اختر شركة لعرض بياناتها --</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
-      document.getElementById('report-comp-items-qty').innerText = '0';
-      document.getElementById('report-comp-total-val').innerText = '0 د.ع';
-    }
-
-    function onReportCompanySelected(compName) {
-      if (!compName) {
-        document.getElementById('report-comp-items-qty').innerText = '0';
-        document.getElementById('report-comp-total-val').innerText = '0 د.ع';
-        return;
-      }
-      let totalQty = 0;
-      let totalVal = 0;
-      inventory.forEach(p => {
-        if ((p.company || '').trim().toLowerCase() === compName.toLowerCase()) {
-          totalQty += Number(p.quantity) || 0;
-          totalVal += (Number(p.quantity) || 0) * (Number(p.price) || 0);
-        }
-      });
-      document.getElementById('report-comp-items-qty').innerText = totalQty.toLocaleString() + ' قطعة';
-      document.getElementById('report-comp-total-val').innerText = totalVal.toLocaleString() + ' د.ع';
     }
 
     function exportInventoryCSV() {
