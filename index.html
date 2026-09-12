@@ -13,7 +13,6 @@
   <meta name="apple-mobile-web-app-title" content="سامو للأدوية">
   
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --ios-bg: #f2f2f7;
@@ -681,22 +680,12 @@
   </div>
 
   <div id="view-log" style="display: none; padding: 0 16px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-      <div style="font-size: 13px; font-weight: 700; color: var(--ios-sub);">سجل القوائم الصادرة والتواريخ:</div>
-      <button class="btn btn-sec" style="font-size: 11px; padding: 4px 10px;" onclick="triggerSync()">مزامنة السحابة الآن</button>
-    </div>
-    <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-radius:12px; padding:10px; margin-bottom:10px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <div>
-          <div style="font-size:13px; font-weight:800;">📥 استيراد القوائم من Excel</div>
-          <div style="font-size:10px; color:var(--ios-sub); margin-top:2px;">يمكن استيراد ملف Excel للقوائم الصادرة وإضافتها إلى السجل.</div>
-        </div>
-        <label class="btn btn-sec" style="font-size:11px; padding:6px 10px; cursor:pointer;">
-          اختيار ملف Excel
-          <input id="orders-excel-input" type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importOrdersFromExcel(event)">
-        </label>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap:8px;">
+      <div>
+        <div style="font-size: 13px; font-weight: 800; color: var(--ios-text);">سجل الصادر والطلبات</div>
+        <div style="font-size: 10px; color: var(--ios-sub); margin-top:2px;">الطلبات المرسلة والمجهزة والمسلمة، وتتم مزامنتها مباشرة من Google Sheets.</div>
       </div>
-      <div id="orders-import-status" style="font-size:11px; color:var(--ios-sub); margin-top:7px;"></div>
+      <button class="btn btn-sec" style="font-size: 11px; padding: 6px 10px;" onclick="triggerSync()">☁️ مزامنة الطلبات</button>
     </div>
     <div id="orders-list-container" class="product-list"></div>
   </div>
@@ -983,7 +972,7 @@
         <label>الباركود:</label>
         <div style="display: flex; gap: 6px;">
           <input type="text" id="in-barcode" placeholder="امسح أو ولّد كوداً">
-          <button class="btn btn-sec" onclick="generateBarcodeField('in-barcode')">توليد</button>
+          <button class="btn btn-sec" onclick="generateBarcodeField('in-barcode')">توليد باركود</button>
           <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1;" onclick="printBarcodeDirectFromAdd()">🖨️ طباعة</button>
         </div>
       </div>
@@ -1344,7 +1333,7 @@
         return;
       }
       const companyItems = (inventory || []).filter(p => String(p.company || '').trim().toLowerCase() === selected);
-      const amount = companyItems.reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.price) || 0)), 0);
+      const amount = companyItems.reduce((sum, p) => sum + (parseAppNumber(p.quantity) * parseAppNumber(p.price)), 0);
       itemsEl.innerText = companyItems.length.toLocaleString() + ' مادة';
       amountEl.innerText = amount.toLocaleString() + ' د.ع';
     }
@@ -1381,6 +1370,32 @@
       }
 
       await loadRemoteData();
+    }
+
+    async function syncOrdersFromGoogleSheets() {
+      const lbl = document.getElementById('conn-lbl');
+      try {
+        if (lbl) lbl.innerText = 'جاري مزامنة الطلبات من Google Sheets...';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(API_URL, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (!data || !Array.isArray(data.orders)) throw new Error('بيانات الطلبات غير صحيحة');
+        ordersList = data.orders;
+        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        renderOrders();
+        if (isAdminUnlocked) {
+          updateReportsView();
+          renderStaffManagementView();
+        }
+        if (lbl) lbl.innerText = isAdminUnlocked ? 'وضع صاحب المذخر (متصل سحابياً)' : 'وضع الموظف (متصل سحابياً)';
+        return true;
+      } catch (e) {
+        if (lbl) lbl.innerText = 'تعذر مزامنة الطلبات — البيانات المحلية تعمل';
+        return false;
+      }
     }
 
     async function loadRemoteData() {
@@ -2395,111 +2410,6 @@
       openDirectBarcodeModal(name, barcode, price);
     }
 
-    function normalizeExcelHeader(value) {
-      return String(value == null ? '' : value).trim().toLowerCase()
-        .replace(/[\s_\-]/g, '')
-        .replace(/[أإآ]/g, 'ا')
-        .replace(/ة/g, 'ه');
-    }
-
-    function excelCell(row, aliases) {
-      const keys = Object.keys(row || {});
-      for (const alias of aliases) {
-        const wanted = normalizeExcelHeader(alias);
-        const key = keys.find(k => normalizeExcelHeader(k) === wanted);
-        if (key !== undefined && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
-          return row[key];
-        }
-      }
-      return '';
-    }
-
-    function parseImportedDate(value) {
-      if (value instanceof Date && !isNaN(value.getTime())) return value.toLocaleString('ar-IQ');
-      if (typeof value === 'number' && window.XLSX && XLSX.SSF && XLSX.SSF.parse_date_code) {
-        const d = XLSX.SSF.parse_date_code(value);
-        if (d) return `${d.y}/${String(d.m).padStart(2,'0')}/${String(d.d).padStart(2,'0')}`;
-      }
-      return String(value || '').trim();
-    }
-
-    function parseImportedItems(row) {
-      const rawItems = excelCell(row, ['items','item','المواد','المادة','تفاصيل المواد','تفاصيل']);
-      if (!rawItems) return [];
-      if (Array.isArray(rawItems)) return rawItems;
-      try {
-        const parsed = JSON.parse(String(rawItems));
-        if (Array.isArray(parsed)) return parsed;
-      } catch(e) {}
-      return [];
-    }
-
-    async function importOrdersFromExcel(event) {
-      const input = event && event.target;
-      const status = document.getElementById('orders-import-status');
-      if (!input || !input.files || !input.files[0]) return;
-      const file = input.files[0];
-      if (status) status.innerText = 'جاري قراءة ملف Excel...';
-
-      try {
-        if (!window.XLSX) throw new Error('مكتبة Excel لم يتم تحميلها. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const sheetName = workbook.SheetNames[0];
-        if (!sheetName) throw new Error('الملف لا يحتوي على ورقة بيانات.');
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
-        if (!rows.length) throw new Error('ملف Excel فارغ.');
-
-        const imported = [];
-        rows.forEach((row, rowIndex) => {
-          const orderNumber = String(excelCell(row, ['OrderNumber','Order Number','رقم القائمة','رقم الطلب','رقم الطلبية']) || `IMP-${Date.now()}-${rowIndex + 1}`).trim();
-          const pharmacyName = String(excelCell(row, ['PharmacyName','Pharmacy Name','اسم الصيدلية','الصيدلية']) || 'صيدلية مستوردة').trim();
-          const phone = String(excelCell(row, ['Phone','رقم الهاتف','الهاتف']) || '').trim();
-          const totalRaw = excelCell(row, ['TotalAmount','Total Amount','المجموع','المبلغ','قيمة الطلب','المبلغ الكلي']);
-          const totalAmount = parseAppNumber(totalRaw);
-          const statusValue = String(excelCell(row, ['Status','الحالة']) || 'قيد المراجعة').trim();
-          const date = parseImportedDate(excelCell(row, ['Date','التاريخ','تاريخ الطلب','تاريخ ووقت الصادر']));
-          const staffName = String(excelCell(row, ['StaffName','Staff Name','اسم الموظف','المجهز']) || 'غير مسجل').trim();
-          const deliveredBy = String(excelCell(row, ['DeliveredBy','Delivered By','المسلم','اسم المسلم']) || '').trim();
-          const items = parseImportedItems(row);
-
-          imported.push({ orderNumber, pharmacyName, phone, totalAmount, status: statusValue, date, staffName, deliveredBy, items });
-        });
-
-        let added = 0, updated = 0;
-        imported.forEach(order => {
-          const existingIndex = ordersList.findIndex(o => String(o.orderNumber || '').trim() === order.orderNumber);
-          if (existingIndex >= 0) {
-            ordersList[existingIndex] = { ...ordersList[existingIndex], ...order };
-            updated++;
-          } else {
-            ordersList.unshift(order);
-            added++;
-          }
-        });
-
-        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-        renderOrders();
-        if (isAdminUnlocked) updateReportsView();
-
-        // ترحيل القوائم المستوردة إلى Google Sheet عند توفر الاتصال.
-        if (navigator.onLine) {
-          for (const order of imported) {
-            try { await postToApi({ action: 'new_order', order }); } catch (e) {}
-          }
-        }
-
-        if (status) status.innerText = `تم الاستيراد بنجاح: ${added} قائمة جديدة، ${updated} قائمة محدثة.`;
-        alert(`تم استيراد القوائم من Excel بنجاح.\nالجديدة: ${added}\nالمحدثة: ${updated}`);
-      } catch (err) {
-        console.error(err);
-        if (status) status.innerText = 'فشل الاستيراد: ' + (err.message || err);
-        alert('تعذر استيراد ملف Excel: ' + (err.message || err));
-      } finally {
-        if (input) input.value = '';
-      }
-    }
-
     function renderOrders() {
       const container = document.getElementById('orders-list-container');
       if (!container) return;
@@ -2774,6 +2684,10 @@
       document.getElementById('view-log').style.display = t === 'log' ? 'block' : 'none';
       document.getElementById('view-staff').style.display = t === 'staff' ? 'block' : 'none';
       document.getElementById('view-reports').style.display = t === 'reports' ? 'block' : 'none';
+
+      if (t === 'log') {
+        renderOrders();
+      }
 
       document.getElementById('tab-btn-home').classList.toggle('active', t === 'home');
       if (document.getElementById('tab-btn-pos')) {
