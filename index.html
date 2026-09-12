@@ -690,8 +690,6 @@
     <div id="orders-list-container" class="product-list"></div>
   </div>
 
-  </div>
-
   <div id="view-staff" style="display: none; padding: 0 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <div style="font-size: 15px; font-weight: 800; color: var(--ios-blue);">إدارة الموظفين والنشاطات والتقارير:</div>
@@ -1016,7 +1014,8 @@
       });
     }
 
-    const API_URL = "https://script.google.com/macros/s/AKfycbxBNSSgmeW36NGp22xh72ehNxDni48eyUUCjyKv0hUaPzrQmmoCqZpfivNWwWF9VksP/exec";
+    // رابط Google Apps Script المحدث
+    const API_URL = "https://script.google.com/macros/s/AKfycbyfXHYmrxVGhNYzo7LlOQkWI9-f_z_z9Fc3LmVlO9VhC0QG8BXeCpyiwpNso0FHj1vm/exec";
 
     // تحويل آمن للأرقام، ويدعم الفواصل والأرقام العربية والفارسية
     function parseAppNumber(value) {
@@ -1435,7 +1434,6 @@
           expiryDate: p.expiryDate || ''
         })).filter(p => p.name);
 
-        // لا نستبدل المخزون المحلي إذا عاد الخادم بقائمة فارغة.
         if (remoteProducts.length > 0) {
           inventory = remoteProducts;
           localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
@@ -1850,7 +1848,6 @@
     }
     function closeEditModal() { document.getElementById('modal-edit-item').style.display = 'none'; }
 
-    // ===== إضافة مادة جديدة =====
     function openAddModal() {
       if (!isAdminUnlocked) {
         alert("إضافة المواد متاحة فقط لصاحب المذخر. يرجى تسجيل الدخول أولاً.");
@@ -1859,11 +1856,10 @@
 
       const modal = document.getElementById('modal-add-item');
       if (!modal) {
-        alert("تعذر فتح نافذة إضافة المادة. تأكد من وجود modal-add-item في الصفحة.");
+        alert("تعذر فتح نافذة إضافة المادة.");
         return;
       }
 
-      // إعادة القيم الافتراضية عند فتح نافذة الإضافة
       const defaults = {
         'in-qty': '10',
         'in-min-qty': '5',
@@ -1876,9 +1872,7 @@
         if (el && !el.value) el.value = value;
       });
 
-      calcBonusNet();
       modal.style.display = 'flex';
-
       setTimeout(() => {
         const nameInput = document.getElementById('in-name');
         if (nameInput) nameInput.focus();
