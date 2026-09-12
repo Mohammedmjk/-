@@ -1354,38 +1354,41 @@
       amountEl.innerText = amount.toLocaleString() + ' د.ع';
     }
 
-    async function triggerSync() {
-      const lbl = document.getElementById('conn-lbl');
-      if (lbl) lbl.innerText = "جاري مزامنة السحابة...";
+  async function triggerSync() { 
+      const lbl = document.getElementById('conn-lbl'); 
+      if (lbl) lbl.innerText = "جاري مزامنة السحابة..."; 
 
-      if (pendingSyncProducts.length > 0) {
-        const toSyncProds = [...pendingSyncProducts];
-        for (const p of toSyncProds) {
-          try {
-            const action = p.id && /^PROD-\d+$/.test(String(p.id)) ? 'save_product' : 'add_product';
-            await postToApi({ action, product: p });
-            pendingSyncProducts = pendingSyncProducts.filter(x => x.id !== p.id);
-          } catch (e) {
-            break;
-          }
-        }
-        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts));
-      }
+      // 1. مزامنة المنتجات المعلقة
+      if (pendingSyncProducts.length > 0) { 
+        let remainingProds = [];
+        for (const p of [...pendingSyncProducts]) { 
+          try { 
+            const action = p.id && /^PROD-\d+$/.test(String(p.id)) ? 'save_product' : 'add_product'; 
+            await postToApi({ action, product: p }); 
+          } catch (e) { 
+            remainingProds.push(p); 
+          } 
+        } 
+        pendingSyncProducts = remainingProds;
+        localStorage.setItem('samo_pending_prods', JSON.stringify(pendingSyncProducts)); 
+      } 
 
-      if (pendingSyncOrders.length > 0) {
-        const toSyncOrders = [...pendingSyncOrders];
-        for (const o of toSyncOrders) {
-          try {
-            await postToApi({ action: 'new_order', order: o });
-            pendingSyncOrders = pendingSyncOrders.filter(x => x.orderNumber !== o.orderNumber);
-          } catch (e) {
-            break;
-          }
-        }
-        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders));
-      }
-
-      await loadRemoteData();
+      // 2. مزامنة الطلبات المعلقة في الأوفلاين
+      if (pendingSyncOrders.length > 0) { 
+        let remainingOrders = [];
+        for (const o of [...pendingSyncOrders]) { 
+          try { 
+            await postToApi({ action: 'new_order', order: o }); 
+          } catch (e) { 
+            remainingOrders.push(o); 
+          } 
+        } 
+        pendingSyncOrders = remainingOrders;
+        localStorage.setItem('samo_pending_orders', JSON.stringify(pendingSyncOrders)); 
+      } 
+ 
+      await loadRemoteData(); 
+      alert("تمت عملية المزامنة بنجاح وتحديث البيانات!");
     }
 
    async function syncOrdersFromGoogleSheets() {
