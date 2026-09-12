@@ -1388,35 +1388,38 @@
       await loadRemoteData();
     }
 
-    async function syncOrdersFromGoogleSheets() {
-      const lbl = document.getElementById('conn-lbl');
-      try {
-        if (lbl) lbl.innerText = 'جاري مزامنة الطلبات من Google Sheets...';
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch(API_URL, { signal: controller.signal, cache: 'no-store' });
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        
-        // تحديث دقيق يدمج البيانات القادمة من الشيت ويحافظ على الترتيب
-        if (data && Array.isArray(data.orders)) {
-          ordersList = data.orders;
-          localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-        }
-        
-        renderOrders();
-        if (isAdminUnlocked) {
-          updateReportsView();
-          renderStaffManagementView();
-        }
-        if (lbl) lbl.innerText = isAdminUnlocked ? 'وضع صاحب المذخر (متصل سحابياً)' : 'وضع الموظف (متصل سحابياً)';
-        return true;
-      } catch (e) {
-        if (lbl) lbl.innerText = 'تعذر مزامنة الطلبات — البيانات المحلية تعمل';
-        return false;
-      }
+   async function syncOrdersFromGoogleSheets() {
+  const lbl = document.getElementById('conn-lbl');
+  try {
+    if (lbl) lbl.innerText = 'جاري مزامنة الطلبات من Google Sheets...';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // ← 45 ثانية بدل 10
+    const res = await fetch(API_URL, { signal: controller.signal, cache: 'no-store' });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    if (data && Array.isArray(data.orders)) {
+      // ← دمج بدل الاستبدال: الشيت + الطلبات المحلية غير المرسلة بعد
+      const remoteNumbers = new Set(data.orders.map(o => o.orderNumber));
+      const localOnly = (ordersList || []).filter(o => !remoteNumbers.has(o.orderNumber));
+      ordersList = [...data.orders, ...localOnly];
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+    } else {
+      throw new Error('السكربت لم يرجع قائمة الطلبات (orders مفقودة)');
     }
+
+    renderOrders();
+    if (isAdminUnlocked) { updateReportsView(); renderStaffManagementView(); }
+    if (lbl) lbl.innerText = isAdminUnlocked ? 'وضع صاحب المذخر (متصل سحابياً)' : 'وضع الموظف (متصل سحابياً)';
+    return true;
+  } catch (e) {
+    if (lbl) lbl.innerText = 'تعذر مزامنة الطلبات — البيانات المحلية تعمل';
+    console.error('SYNC ERROR:', e);
+    alert('فشلت مزامنة الطلبات: ' + e.message); // ← مؤقتًا للتشخيص، احذفه بعد الإصلاح
+    return false;
+  }
+}
 
     async function loadRemoteData() {
       const lbl = document.getElementById('conn-lbl');
@@ -1432,7 +1435,7 @@
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
         const res = await fetch(API_URL, { signal: controller.signal, cache: 'no-store' });
         clearTimeout(timeoutId);
 
