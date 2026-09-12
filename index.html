@@ -1303,20 +1303,29 @@
         sortedCompanies.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
-    function populateReportCompanyDropdown() {
+  function populateReportCompanyDropdown() {
       const select = document.getElementById('report-company-select');
       if (!select) return;
+      
       const companies = new Map();
       (inventory || []).forEach(p => {
         const raw = String(p.company || '').trim();
         if (!raw) return;
         const key = raw.toLowerCase();
-        if (!companies.has(key)) companies.set(key, raw);
+        if (!companies.has(key)) {
+          companies.set(key, raw);
+        }
       });
+
       const current = select.value;
-      const list = Array.from(companies.values()).sort((a,b) => a.localeCompare(b, 'ar'));
-      select.innerHTML = '<option value="">-- اختر الشركة --</option>' + list.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-      if (list.includes(current)) select.value = current;
+      const list = Array.from(companies.values()).sort((a, b) => a.localeCompare(b, 'ar'));
+      
+      select.innerHTML = '<option value="">-- اختر الشركة --</option>' + 
+        list.map(c => `<option value="${c}">${c}</option>`).join('');
+      
+      if (list.includes(current)) {
+        select.value = current;
+      }
       updateCompanyReport();
     }
 
@@ -1324,16 +1333,24 @@
       const select = document.getElementById('report-company-select');
       const itemsEl = document.getElementById('report-company-items');
       const amountEl = document.getElementById('report-company-amount');
+      
       if (!select || !itemsEl || !amountEl) return;
+      
       const selected = String(select.value || '').trim().toLowerCase();
       if (!selected) {
         itemsEl.innerText = '0 مادة';
         amountEl.innerText = '0 د.ع';
         return;
       }
-      const companyItems = (inventory || []).filter(p => String(p.company || '').trim().toLowerCase() === selected);
+
+      const companyItems = (inventory || []).filter(p => 
+        String(p.company || '').trim().toLowerCase() === selected
+      );
+
+      const totalItemsCount = companyItems.reduce((sum, p) => sum + parseAppNumber(p.quantity), 0);
       const amount = companyItems.reduce((sum, p) => sum + (parseAppNumber(p.quantity) * parseAppNumber(p.price)), 0);
-      itemsEl.innerText = companyItems.length.toLocaleString() + ' مادة';
+
+      itemsEl.innerText = companyItems.length.toLocaleString() + ' مادة (العدد: ' + totalItemsCount.toLocaleString() + ')';
       amountEl.innerText = amount.toLocaleString() + ' د.ع';
     }
 
