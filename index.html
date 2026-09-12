@@ -1398,9 +1398,13 @@
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        if (!data || !Array.isArray(data.orders)) throw new Error('بيانات الطلبات غير صحيحة');
-        ordersList = data.orders;
-        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        
+        // تحديث دقيق يدمج البيانات القادمة من الشيت ويحافظ على الترتيب
+        if (data && Array.isArray(data.orders)) {
+          ordersList = data.orders;
+          localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        }
+        
         renderOrders();
         if (isAdminUnlocked) {
           updateReportsView();
@@ -2421,7 +2425,7 @@
       openDirectBarcodeModal(name, barcode, price);
     }
 
-    function renderOrders() {
+   function renderOrders() {
       const container = document.getElementById('orders-list-container');
       if (!container) return;
 
@@ -2441,7 +2445,6 @@
             <span class="badge" style="background:#ecfdf5; color:#16a34a;">معتمد</span>
           `;
         } else {
-          // قيد المراجعة / جديد
           actionButtons = `
             <button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-blue);" onclick="openInspectOrderModal(${idx})">فحص وتعديل</button>
             <button class="btn" style="padding:4px 10px; font-size:11px; background:var(--ios-green);" onclick="approveAndSignOrderDirect(${idx})">اعتماد ✓</button>
@@ -2472,7 +2475,6 @@
       }).join('');
     }
 
-    // دالة مساعدة لاعتماد الطلب مباشرة من القائمة إذا لم ترغب بفتح نافذة الفحص
     function approveAndSignOrderDirect(idx) {
       currentInspectingOrderIndex = idx;
       approveAndSignOrder();
