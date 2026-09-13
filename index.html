@@ -1456,7 +1456,7 @@
       const keys = Object.keys(posCartMap);
       if (keys.length === 0) return alert("السلة فارغة!");
       if (!ph) return alert("يرجى كتابة اسم الصيدلية");
-      if (!activeStaffName) return alert("يرجى اختيار الموظف المجهز من الأعلى!");
+      if (isAdminUnlocked && !activeStaffName) return alert("يرجى اختيار الموظف المجهز من الأعلى!");
 
       const newItems = keys.map(id => {
         const p = inventory.find(i => i.id === id);
@@ -1581,7 +1581,7 @@
       const ph = document.getElementById('order-ph-name').value.trim();
       const phone = document.getElementById('order-ph-phone').value.trim();
       if (!ph) return alert("يرجى كتابة اسم الصيدلية");
-      if (!activeStaffName) return alert("يرجى اختيار الموظف المجهز من الأعلى!");
+      if (isAdminUnlocked && !activeStaffName) return alert("يرجى اختيار الموظف المجهز من الأعلى!");
 
       const newItems = Object.keys(cartMap).map(id => {
         const p = inventory.find(i => i.id === id);
