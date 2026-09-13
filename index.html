@@ -1138,6 +1138,14 @@
       if (posBadge) posBadge.innerText = activeStaffName || 'غير مسجل';
     }
 
+    function resetAllFilters() {
+      document.getElementById('filter-form').value = '';
+      document.getElementById('filter-expiry').value = '';
+      document.getElementById('filter-stock').value = '';
+      document.getElementById('filter-company').value = '';
+      renderProducts();
+    }
+
     function toggleHideOutStock() {
       hideOutStock = !hideOutStock;
       renderProducts();
@@ -1209,18 +1217,51 @@
       return rawForm || 'Tablet';
     }
 
-    function checkExpiryStatus(expStr) {
-      if (!expStr) return 'valid';
-      const parts = expStr.split(/[-/]/);
-      if (parts.length < 2) return 'valid';
-      const year = parseInt(parts[0]);
-      const month = parseInt(parts[1]) - 1;
-      const expDate = new Date(year, month, 1);
+    function parseExpiryDate(value) {
+      if (value === null || value === undefined || value === '') return null;
+      if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value)) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      const v = String(value).trim();
+      if (!v) return null;
+      let m = v.match(/^(\d{4})[\/-](\d{1,2})(?:[\/-](\d{1,2}))?/);
+      if (m) {
+        const y = Number(m[1]), mo = Number(m[2]);
+        if (mo < 1 || mo > 12) return null;
+        const day = m[3] ? Number(m[3]) : new Date(y, mo, 0).getDate();
+        const d = new Date(y, mo - 1, day);
+        return isNaN(d) ? null : d;
+      }
+      m = v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+      if (m) {
+        const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+        return isNaN(d) ? null : d;
+      }
+      const parsed = new Date(v);
+      return isNaN(parsed) ? null : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+
+    function formatExpiryForDisplay(value) {
+      const d = parseExpiryDate(value);
+      if (!d) return '';
+      return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function isNearExpiry(value) {
+      const d = parseExpiryDate(value);
+      if (!d) return false;
       const now = new Date();
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      if (expDate < currentMonthStart) return 'expired';
-      const diffMonths = (year - now.getFullYear()) * 12 + (month - now.getMonth());
-      return (diffMonths >= 0 && diffMonths <= 6) ? 'near' : 'valid';
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const sixMonths = new Date(today.getFullYear(), today.getMonth()+6, today.getDate());
+      return d >= today && d <= sixMonths;
+    }
+
+    function checkExpiryStatus(expStr) {
+      const d = parseExpiryDate(expStr);
+      if (!d) return 'unknown';
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (d < today) return 'expired';
+      if (isNearExpiry(expStr)) return 'near';
+      return 'valid';
     }
 
     function initSystem() {
@@ -1401,10 +1442,17 @@
       if (!container) return;
       const q = document.getElementById('search-box').value.trim().toLowerCase();
       const companyFilter = document.getElementById('filter-company').value;
+      const expiryFilter = document.getElementById('filter-expiry').value;
+      const stockFilter = document.getElementById('filter-stock').value;
+      const formFilter = document.getElementById('filter-form').value;
       let list = inventory;
       if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)) || (i.company && i.company.toLowerCase().includes(q)));
       if (hideOutStock) list = list.filter(i => i.quantity > 0);
       if (companyFilter) list = list.filter(i => (i.company || '').trim().toLowerCase() === companyFilter.trim().toLowerCase());
+      if (formFilter) list = list.filter(i => smartDetectForm(i.name, i.form) === formFilter);
+      if (stockFilter === 'available') list = list.filter(i => Number(i.quantity || 0) > 0);
+      if (stockFilter === 'shortage') list = list.filter(i => Number(i.quantity || 0) <= Number(i.minQty || 5));
+      if (expiryFilter) list = list.filter(i => checkExpiryStatus(i.expiryDate) === expiryFilter);
 
       if (list.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
@@ -1435,7 +1483,7 @@
         return `
           <div class="prod-card">
             <div class="prod-top"><div class="prod-info-col"><div class="prod-name">${item.name}</div>
-            <div style="font-size:11px;color:var(--ios-sub);font-weight:700;margin-top:-2px;">📅 الصلاحية: ${escapeHtml(item.expiryDate || "غير محدد")}</div>
+            <div style="font-size:11px;color:${checkExpiryStatus(item.expiryDate)==='expired'?'#e11d48':checkExpiryStatus(item.expiryDate)==='near'?'#d97706':'var(--ios-sub)'};font-weight:800;margin-top:-2px;">📅 الصلاحية: ${escapeHtml(formatExpiryForDisplay(item.expiryDate) || item.expiryDate || "غير محدد")} ${checkExpiryStatus(item.expiryDate)==='expired'?'⚠️ منتهي':checkExpiryStatus(item.expiryDate)==='near'?'⏳ قريب':checkExpiryStatus(item.expiryDate)==='valid'?'✓ صالح':''}</div>
             <div class="prod-sub-info"><span class="badge badge-form">${smartDetectForm(item.name, item.form)}</span> ${item.company ? `<span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${item.company}</span>` : ''}</div></div></div>
             <div class="prod-cart-action-area">${cartActionHtml}</div>
             <div class="prod-bottom"><span class="prod-price">${netPrice.toLocaleString()} د.ع</span><span class="prod-stock-lbl">المتوفر: ${item.quantity}</span></div>
@@ -1924,18 +1972,9 @@
       document.getElementById('fin-ph-count').innerText = Object.keys(phMap).length + ' صيدلية';
       document.getElementById('fin-orders-count').innerText = ordersList.length + ' طلب';
       const stockWithBalance = inventory.filter(p => Number(p.quantity || 0) > 0);
-      const stockValue = stockWithBalance.reduce((s,p)=>s+(Number(p.quantity||0)*Number(p.price||0)),0);
-      const today = new Date();
-      const sixMonthsFromToday = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate());
-      const nearValue = stockWithBalance.reduce((s,p)=>{
-        const d=parseExpiryDate(p.expiryDate);
-        if(!d)return s;
-        return s+(d >= today && d <= sixMonthsFromToday ? Number(p.quantity||0)*Number(p.price||0) : 0);
-      },0);
-      const expiredValue = stockWithBalance.reduce((s,p)=>{
-        const d=parseExpiryDate(p.expiryDate);
-        return s+(d && d < new Date(today.getFullYear(),today.getMonth(),1) ? Number(p.quantity||0)*Number(p.price||0) : 0);
-      },0);
+      const stockValue = stockWithBalance.reduce((s,p) => s + Number(p.quantity || 0) * Number(p.price || 0), 0);
+      const nearValue = stockWithBalance.reduce((s,p) => s + (checkExpiryStatus(p.expiryDate) === 'near' ? Number(p.quantity || 0) * Number(p.price || 0) : 0), 0);
+      const expiredValue = stockWithBalance.reduce((s,p) => s + (checkExpiryStatus(p.expiryDate) === 'expired' ? Number(p.quantity || 0) * Number(p.price || 0) : 0), 0);
       document.getElementById('fin-stock-val').innerText = stockValue.toLocaleString() + ' د.ع';
       document.getElementById('fin-near-stock-val').innerText = nearValue.toLocaleString() + ' د.ع';
       document.getElementById('fin-expired-stock-val').innerText = expiredValue.toLocaleString() + ' د.ع';
