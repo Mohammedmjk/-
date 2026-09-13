@@ -725,6 +725,16 @@
         <div class="mini-chart"><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 70%;"></div></div>
       </div>
       <div class="fin-card">
+        <div class="fin-title">قيمة الأدوية القريبة (رصيد > 0)</div>
+        <div id="fin-near-stock-val" class="fin-amount" style="color: var(--ios-orange);">0 د.ع</div>
+        <div class="mini-chart"><div class="mini-bar" style="height: 45%;"></div><div class="mini-bar" style="height: 75%;"></div><div class="mini-bar" style="height: 55%;"></div></div>
+      </div>
+      <div class="fin-card">
+        <div class="fin-title">قيمة الأدوية المنتهية (رصيد > 0)</div>
+        <div id="fin-expired-stock-val" class="fin-amount" style="color: var(--ios-red);">0 د.ع</div>
+        <div class="mini-chart"><div class="mini-bar" style="height: 65%;"></div><div class="mini-bar" style="height: 35%;"></div><div class="mini-bar" style="height: 80%;"></div></div>
+      </div>
+      <div class="fin-card">
         <div class="fin-title">إجمالي مبالغ المصروف</div>
         <div id="fin-dispatched-val" class="fin-amount" style="color: var(--ios-blue);">0 د.ع</div>
         <div class="mini-chart"><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 100%;"></div></div>
@@ -1360,6 +1370,22 @@
     }
     function changeInventoryQty(prodId,delta){const item=inventory.find(i=>String(i.id)===String(prodId));if(!item)return;setInventoryQty(prodId,Number(item.quantity||0)+Number(delta||0));}
 
+    function normalizeStockAddInput(prodId){
+      const el=document.getElementById('stock-add-'+prodId);
+      if(!el)return 1;
+      const q=Math.max(1,Math.floor(Number(el.value)||1));
+      el.value=q;
+      return q;
+    }
+    async function changeInventoryByInput(prodId,direction){
+      if(!isAdminUnlocked)return alert('تعديل المخزون متاح فقط لصاحب المذخر.');
+      const item=inventory.find(i=>String(i.id)===String(prodId)); if(!item)return;
+      const amount=normalizeStockAddInput(prodId);
+      const next=Math.max(0,Number(item.quantity||0)+(direction*amount));
+      await setInventoryQty(prodId,next);
+      const el=document.getElementById('stock-add-'+prodId); if(el)el.value=amount;
+    }
+
     function renderProducts() {
       const container = document.getElementById('prod-list-container');
       if (!container) return;
@@ -1381,14 +1407,15 @@
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
         let cartActionHtml = isOutOfStock ? `<span class="badge badge-out">نافد من المخزن</span>` :
           (inCart === 0 ? `<button class="btn-add-cart-wide" onclick="modifyCartQty('${item.id}', 1)">+ إضافة للسلة</button>` :
-          `<div class="counter-control-wide"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><span class="counter-val-wide" onclick="promptDirectCartQty('${item.id}')">${inCart}</span><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button></div>`);
+          `<div class="counter-control-wide"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><input type="number" min="1" max="${item.quantity}" value="${inCart}" class="counter-val-wide" style="width:58px;text-align:center;border:0;background:transparent;font-weight:800;font-size:16px;outline:none;" onchange="setCartQty('${item.id}', this.value)" onkeydown="if(event.key==='Enter'){setCartQty('${item.id}', this.value);this.blur();}"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button></div>`);
 
         let adminTools = isAdminUnlocked ? `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:0.5px dashed var(--ios-border); padding-top:6px;">
             <div style="display:flex; gap:5px;align-items:center;flex-wrap:wrap;">
-              <button class="btn btn-sec" style="font-size:11px;padding:2px 7px;" onclick="changeInventoryQty('${item.id}',-1)">−</button>
-              <input type="number" min="0" value="${Number(item.quantity||0)}" style="width:62px;text-align:center;padding:4px;border:1px solid var(--ios-border);border-radius:7px;" onchange="setInventoryQty('${item.id}',this.value)">
-              <button class="btn btn-sec" style="font-size:11px;padding:2px 7px;" onclick="changeInventoryQty('${item.id}',1)">+</button>
+              <span style="font-size:10px;color:var(--ios-sub);font-weight:700;">كمية الإضافة/السحب:</span>
+              <button class="btn btn-sec" style="font-size:11px;padding:2px 7px;" onclick="changeInventoryByInput('${item.id}',-1)">−</button>
+              <input type="number" min="1" value="1" id="stock-add-${item.id}" style="width:62px;text-align:center;padding:4px;border:1px solid var(--ios-border);border-radius:7px;" onchange="normalizeStockAddInput('${item.id}')">
+              <button class="btn btn-sec" style="font-size:11px;padding:2px 7px;" onclick="changeInventoryByInput('${item.id}',1)">+</button>
               <button class="btn btn-sec" style="font-size:11px; padding:2px 8px;" onclick="openEditItemModal('${item.id}')">✏️ تعديل</button>
               <button class="btn btn-sec" style="font-size:11px; padding:2px 8px; background:#e0f2fe; color:#0369a1;" onclick="openDirectBarcodeModal('${item.name}', '${item.barcode}', ${netPrice})">🖨️ باركود</button>
             </div>
@@ -1527,6 +1554,20 @@
       } catch(e) {}
       alert("تم إرسال واعتماد الطلب بنجاح!");
       setMainTab('log');
+    }
+
+    function setCartQty(prodId, value) {
+      const prod = inventory.find(i => i.id === prodId);
+      if (!prod) return;
+      let qty = Math.floor(Number(value));
+      if (!Number.isFinite(qty) || qty < 1) {
+        delete cartMap[prodId];
+      } else {
+        qty = Math.min(qty, Number(prod.quantity || 0));
+        if (qty > 0) cartMap[prodId] = qty;
+        else delete cartMap[prodId];
+      }
+      renderProducts();
     }
 
     function modifyCartQty(prodId, delta) {
@@ -1830,12 +1871,34 @@
       setMainTab('home');
     }
 
+    function parseExpiryDate(value){
+      const v=String(value||'').trim(); if(!v)return null;
+      const m=v.match(/^(\d{4})[\/-](\d{1,2})(?:[\/-](\d{1,2}))?/);
+      if(!m)return null;
+      return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]||1));
+    }
+
     function updateReportsView() {
       const phMap = {};
       ordersList.forEach(o => { phMap[o.pharmacyName] = 1; });
       document.getElementById('fin-ph-count').innerText = Object.keys(phMap).length + ' صيدلية';
       document.getElementById('fin-orders-count').innerText = ordersList.length + ' طلب';
-      document.getElementById('fin-stock-val').innerText = inventory.reduce((s,p)=>s+(p.quantity*p.price),0).toLocaleString() + ' د.ع';
+      const stockWithBalance = inventory.filter(p => Number(p.quantity || 0) > 0);
+      const stockValue = stockWithBalance.reduce((s,p)=>s+(Number(p.quantity||0)*Number(p.price||0)),0);
+      const today = new Date();
+      const nearValue = stockWithBalance.reduce((s,p)=>{
+        const d=parseExpiryDate(p.expiryDate);
+        if(!d)return s;
+        const months=(d.getFullYear()-today.getFullYear())*12+(d.getMonth()-today.getMonth());
+        return s+(months>=0 && months<=6 ? Number(p.quantity||0)*Number(p.price||0) : 0);
+      },0);
+      const expiredValue = stockWithBalance.reduce((s,p)=>{
+        const d=parseExpiryDate(p.expiryDate);
+        return s+(d && d < new Date(today.getFullYear(),today.getMonth(),1) ? Number(p.quantity||0)*Number(p.price||0) : 0);
+      },0);
+      document.getElementById('fin-stock-val').innerText = stockValue.toLocaleString() + ' د.ع';
+      document.getElementById('fin-near-stock-val').innerText = nearValue.toLocaleString() + ' د.ع';
+      document.getElementById('fin-expired-stock-val').innerText = expiredValue.toLocaleString() + ' د.ع';
       document.getElementById('fin-dispatched-val').innerText = ordersList.reduce((s,o)=>s+o.totalAmount,0).toLocaleString() + ' د.ع';
       populateReportCompanyDropdown();
     }
