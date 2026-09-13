@@ -688,18 +688,22 @@
       <div class="fin-card">
         <div class="fin-title">إجمالي عدد الصيدليات</div>
         <div id="fin-ph-count" class="fin-amount" style="color: var(--ios-blue);">0 صيدلية</div>
+        <div class="mini-chart"><div class="mini-bar" style="height: 40%;"></div><div class="mini-bar" style="height: 70%;"></div><div class="mini-bar" style="height: 100%;"></div></div>
       </div>
       <div class="fin-card">
         <div class="fin-title">إجمالي عدد الطلبيات</div>
         <div id="fin-orders-count" class="fin-amount" style="color: var(--ios-purple);">0 طلب</div>
+        <div class="mini-chart"><div class="mini-bar" style="height: 60%;"></div><div class="mini-bar" style="height: 40%;"></div><div class="mini-bar" style="height: 90%;"></div></div>
       </div>
       <div class="fin-card">
         <div class="fin-title">قيمة الأدوية بالمخزن</div>
         <div id="fin-stock-val" class="fin-amount" style="color: var(--ios-green);">0 د.ع</div>
+        <div class="mini-chart"><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 70%;"></div></div>
       </div>
       <div class="fin-card">
         <div class="fin-title">إجمالي مبالغ المصروف</div>
         <div id="fin-dispatched-val" class="fin-amount" style="color: var(--ios-blue);">0 د.ع</div>
+        <div class="mini-chart"><div class="mini-bar" style="height: 50%;"></div><div class="mini-bar" style="height: 80%;"></div><div class="mini-bar" style="height: 100%;"></div></div>
       </div>
     </div>
 
@@ -758,6 +762,7 @@
         <div class="sheet-title">طباعة ملصق الباركود الحراري</div>
         <button class="btn btn-sec" onclick="closeDirectBarcodeModal()">إغلاق</button>
       </div>
+      
       <div style="background: #f2f2f7; padding: 10px; border-radius: 12px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
         <span style="font-size: 12px; font-weight: 700; color: #3a3a3c;">اتجاه طباعة الملصق:</span>
         <select id="print-orientation-select" style="background: #fff; border: 1px solid var(--ios-border); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; outline: none;">
@@ -765,14 +770,18 @@
           <option value="portrait">عمودي (Portrait - 38×72 مم)</option>
         </select>
       </div>
+
       <div class="barcode-preview-box">
         <div id="prev-barcode-name" style="font-size: 11px; font-weight: bold; max-width: 65mm; overflow: hidden; white-space: nowrap;">اسم الدواء</div>
         <div id="prev-barcode-svg" style="margin: 4px 0;"></div>
         <div id="prev-barcode-num" style="font-family: monospace; font-size: 11px; font-weight: bold;">000000000</div>
         <div id="prev-barcode-price" style="font-size: 10px; font-weight: bold;">0 د.ع</div>
       </div>
+
       <div style="display: flex; gap: 8px;">
-        <button class="btn" style="flex: 1; justify-content: center; padding: 14px; font-size: 15px; background: var(--ios-blue); box-shadow: 0 4px 12px rgba(0,122,255,0.3);" onclick="executeDirectThermalPrint()">🖨️ طباعة الملصق الآن</button>
+        <button class="btn" style="flex: 1; justify-content: center; padding: 14px; font-size: 15px; background: var(--ios-blue); box-shadow: 0 4px 12px rgba(0,122,255,0.3);" onclick="executeDirectThermalPrint()">
+          🖨️ طباعة الملصق الآن (صفحة 1)
+        </button>
         <button class="btn btn-sec" style="padding: 14px; font-size: 14px;" onclick="closeDirectBarcodeModal()">إغلاق</button>
       </div>
     </div>
@@ -785,6 +794,12 @@
         <button class="btn btn-sec" onclick="closeSendModal()">إغلاق</button>
       </div>
       <div id="checkout-summary" style="margin-bottom: 12px; max-height: 200px; overflow-y: auto;"></div>
+      <div class="form-row" id="saved-pharmacy-picker-row" style="display: none;">
+        <label>اختيار صيدلية مسجلة مسبقاً:</label>
+        <select id="saved-ph-select" onchange="onSavedPharmacySelected()">
+          <option value="">-- أو اختر صيدلية محفوظة --</option>
+        </select>
+      </div>
       <div class="form-row">
         <label>اسم الصيدلية المستلمة:</label>
         <input type="text" id="order-ph-name" placeholder="مثال: صيدلية الرافدين">
@@ -818,125 +833,180 @@
   <div id="modal-edit-item" class="modal-overlay">
     <div class="modal-sheet">
       <div class="sheet-head">
-        <div class="sheet-title">تعديل بيانات المادة الدوائية</div>
+        <div class="sheet-title">تعديل بيانات المادة الدوائية والشركة</div>
         <button class="btn btn-sec" onclick="closeEditModal()">إغلاق</button>
       </div>
       <input type="hidden" id="edit-prod-id">
-      <div class="form-row"><label>اسم المادة:</label><input type="text" id="edit-name"></div>
-      <div class="form-row"><label>صورة المنتج:</label><input type="text" id="edit-image"></div>
-      <div class="form-row"><label>الشركة:</label><input type="text" id="edit-company"></div>
-      <div class="form-row"><label>الشكل الدوائي:</label><input type="text" id="edit-form"></div>
-      <div class="form-row"><label>الباركود:</label>
+      <div class="form-row">
+        <label>اسم المادة:</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="form-row">
+        <label>صورة المنتج (رابط أو التقاط بالكاميرا):</label>
         <div style="display: flex; gap: 6px;">
-          <input type="text" id="edit-barcode">
+          <input type="text" id="edit-image" placeholder="https://... أو التقاط">
+          <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1; white-space:nowrap;" onclick="openCameraForImage('edit-image')">📷 التقاط</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>الشركة / المنشأ:</label>
+        <input type="text" id="edit-company" placeholder="اسم الشركة المصنعة...">
+      </div>
+      <div class="form-row">
+        <label>الشكل الدوائي:</label>
+        <input type="text" id="edit-form" placeholder="Tablet, Syrup...">
+      </div>
+      <div class="form-row">
+        <label>الباركود:</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="edit-barcode" placeholder="امسح أو ولّد كوداً">
           <button class="btn btn-sec" onclick="generateBarcodeField('edit-barcode')">توليد</button>
           <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1;" onclick="printBarcodeDirectFromEdit()">🖨️ طباعة</button>
         </div>
       </div>
       <div style="display: flex; gap: 8px;">
-        <div class="form-row" style="flex:1;"><label>الكمية:</label><input type="number" id="edit-qty"></div>
-        <div class="form-row" style="flex:1;"><label>الحد الأدنى:</label><input type="number" id="edit-min-qty"></div>
+        <div class="form-row" style="flex:1;">
+          <label>الكمية:</label>
+          <input type="number" id="edit-qty">
+        </div>
+        <div class="form-row" style="flex:1;">
+          <label>الحد الأدنى:</label>
+          <input type="number" id="edit-min-qty">
+        </div>
       </div>
       <div style="display: flex; gap: 8px;">
-        <div class="form-row" style="flex:1;"><label>السعر:</label><input type="number" id="edit-price"></div>
-        <div class="form-row" style="flex:1;"><label>البونص (%):</label><input type="number" id="edit-bonus"></div>
+        <div class="form-row" style="flex:1;">
+          <label>سعر المفرد:</label>
+          <input type="number" id="edit-price">
+        </div>
+        <div class="form-row" style="flex:1;">
+          <label>البونص (%):</label>
+          <input type="number" id="edit-bonus">
+        </div>
       </div>
-      <div class="form-row"><label>الصلاحية:</label><input type="text" id="edit-exp"></div>
-      <button class="btn" style="width: 100%; justify-content: center; padding: 11px;" onclick="saveEditedMedicine()">حفظ التعديلات</button>
+      <div class="form-row">
+        <label>تاريخ الصلاحية (YYYY-MM):</label>
+        <input type="text" id="edit-exp">
+      </div>
+      <button class="btn" style="width: 100%; justify-content: center; padding: 11px; margin-top: 6px;" onclick="saveEditedMedicine()">حفظ التعديلات وترحيلها للشيت</button>
     </div>
   </div>
 
   <div id="modal-add-item" class="modal-overlay">
     <div class="modal-sheet">
       <div class="sheet-head">
-        <div class="sheet-title">إضافة مادة جديدة للمخزن</div>
+        <div class="sheet-title">إضافة مادة دوائية جديدة للمخزن</div>
         <button class="btn btn-sec" onclick="closeAddModal()">إغلاق</button>
       </div>
-      <div class="form-row"><label>اسم المادة:</label><input type="text" id="in-name" placeholder="اسم الدواء..."></div>
-      <div class="form-row"><label>صورة المنتج:</label><input type="text" id="in-image" placeholder="رابط الصورة..."></div>
-      <div class="form-row"><label>الشركة:</label><input type="text" id="in-company" placeholder="اسم الشركة..."></div>
-      <div class="form-row"><label>الشكل الدوائي:</label>
+      <div class="form-row">
+        <label>اسم المادة:</label>
+        <input type="text" id="in-name" placeholder="مثال: Paracetamol 120mg Syrup">
+      </div>
+      <div class="form-row">
+        <label>صورة المنتج (رابط أو التقاط بالكاميرا):</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="in-image" placeholder="https://... أو التقاط">
+          <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1; white-space:nowrap;" onclick="openCameraForImage('in-image')">📷 التقاط</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>الشركة / المنشأ:</label>
+        <input type="text" id="in-company" placeholder="اسم الشركة المصنعة...">
+      </div>
+      <div class="form-row">
+        <label>التصنيف / الشكل الدوائي:</label>
         <select id="in-form">
-          <option value="Tablet">Tablet</option><option value="Capsule">Capsule</option><option value="Syrup">Syrup</option><option value="Vial">Vial</option>
+          <option value="Tablet">Tablet (حبوب)</option>
+          <option value="Capsule">Capsule (كبسول)</option>
+          <option value="Syrup">Syrup (شراب)</option>
+          <option value="Suspension">Suspension (معلق)</option>
+          <option value="Injection">Injection (حقن)</option>
+          <option value="Vial">Vial (فيال)</option>
+          <option value="Ampoule">Ampoule (أمبول)</option>
+          <option value="Cream">Cream (كريم)</option>
         </select>
       </div>
       <div style="display: flex; gap: 8px;">
-        <div class="form-row" style="flex:1;"><label>العدد:</label><input type="number" id="in-qty" value="10"></div>
-        <div class="form-row" style="flex:1;"><label>الحد الأدنى:</label><input type="number" id="in-min-qty" value="5"></div>
+        <div class="form-row" style="flex:1;">
+          <label>العدد:</label>
+          <input type="number" id="in-qty" value="10">
+        </div>
+        <div class="form-row" style="flex:1;">
+          <label>الحد الأدنى:</label>
+          <input type="number" id="in-min-qty" value="5">
+        </div>
       </div>
       <div style="display: flex; gap: 8px;">
-        <div class="form-row" style="flex:1;"><label>السعر:</label><input type="number" id="in-price" value="5000"></div>
-        <div class="form-row" style="flex:1;"><label>البونص (%):</label><input type="number" id="in-bonus" value="0"></div>
+        <div class="form-row" style="flex:1;">
+          <label>سعر المفرد:</label>
+          <input type="number" id="in-price" value="5000" oninput="calcBonusNet()">
+        </div>
+        <div class="form-row" style="flex:1;">
+          <label>البونص (%):</label>
+          <input type="number" id="in-bonus" value="0" oninput="calcBonusNet()">
+        </div>
       </div>
-      <div class="form-row"><label>الصلاحية (YYYY-MM):</label><input type="text" id="in-exp" placeholder="2027-12"></div>
-      <div class="form-row"><label>الباركود:</label>
+      <div id="bonus-hint" style="font-size: 11px; color: var(--ios-green); font-weight: 700; margin-bottom: 8px;">السعر الفعلي: 5,000 د.ع</div>
+      <div class="form-row">
+        <label>تاريخ الصلاحية (YYYY-MM):</label>
+        <input type="text" id="in-exp" placeholder="2027-12">
+      </div>
+      <div class="form-row">
+        <label>الباركود:</label>
         <div style="display: flex; gap: 6px;">
-          <input type="text" id="in-barcode">
-          <button class="btn btn-sec" onclick="generateBarcodeField('in-barcode')">توليد</button>
+          <input type="text" id="in-barcode" placeholder="امسح أو ولّد كوداً">
+          <button class="btn btn-sec" onclick="generateBarcodeField('in-barcode')">توليد باركود</button>
           <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1;" onclick="printBarcodeDirectFromAdd()">🖨️ طباعة</button>
         </div>
       </div>
-      <button class="btn" style="width: 100%; justify-content: center; padding: 11px;" onclick="saveNewMedicine()">حفظ وترحيل للشيت</button>
+      <button type="button" class="btn" style="width: 100%; justify-content: center; padding: 11px; margin-top: 6px;" onclick="saveNewMedicine()">حفظ وترحيل المادة للشيت</button>
+    </div>
+  </div>
+
+  <div id="invoice-a4-sheet" style="padding: 25px; font-family: Tahoma, Arial, sans-serif; direction: rtl;">
+    <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px;">
+      <h1 style="font-size: 20px; font-weight: bold; margin-bottom: 4px;">مستودع سامو للأدوية والمستلزمات الطبية</h1>
+      <h3 style="font-size: 15px; margin-bottom: 6px;">قائمة تجهيز وصادر معتمدة</h3>
+      <div id="inv-meta-info" style="display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; border: 1px solid #000; padding: 6px; border-radius: 4px; background: #f9f9f9;"></div>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; text-align: right; font-size: 12px; margin-bottom: 15px;">
+      <thead>
+        <tr style="background: #e5e5e5;">
+          <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 35px;">ت</th>
+          <th style="border: 1px solid #000; padding: 6px;">اسم الدواء / المادة</th>
+          <th style="border: 1px solid #000; padding: 6px; text-align: center;">الشكل</th>
+          <th style="border: 1px solid #000; padding: 6px; text-align: center;">الصلاحية</th>
+          <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 50px;">العدد</th>
+          <th style="border: 1px solid #000; padding: 6px; text-align: left;">سعر المفرد</th>
+          <th style="border: 1px solid #000; padding: 6px; text-align: left;">الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody id="inv-table-rows"></tbody>
+    </table>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 15px;">
+      <div style="font-size: 13px; font-weight: bold; border: 1.5px solid #000; padding: 8px; border-radius: 6px; background: #fafafa;" id="inv-total-box"></div>
+      <div style="text-align: center; font-size: 12px; font-weight: bold; margin-left: 20px;">
+        <p id="inv-staff-sign">توقيع الموظف المجهز: ..........................</p>
+        <p style="margin-top: 25px;">توقيع وختم أمين المستودع</p>
+      </div>
     </div>
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyfXHYmrxVGhNYzo7LlOQkWI9-f_z_z9Fc3LmVlO9VhC0QG8BXeCpyiwpNso0FHj1vm/exec";
-
-    let inventory = [];
-    let ordersList = [];
-    let cartMap = {};
-    let posCartMap = {};
-    let hideOutStock = false;
-    let posHideOutStock = false;
-    let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
-    let activeStaffName = localStorage.getItem('samo_active_staff') || '';
-    let staffNamesList = JSON.parse(localStorage.getItem('samo_staff_names_list') || '["أحمد", "محمد", "علي", "سجاد"]');
-    let html5QrScanner = null;
-    let currentInspectingOrderIndex = null;
-    let targetSearchInputId = 'search-box';
-
-    window.addEventListener('DOMContentLoaded', () => {
-      populateStaffDropdown();
-      updateStaffBadgeUI();
-      loadLocalData();
-      if (isAdminUnlocked) { unlockAdminUI(true); } else { lockAdminUI(true); }
-      loadRemoteData();
-    });
-
-    function loadLocalData() {
-      const localStock = localStorage.getItem('samo_inventory_v39');
-      if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
-      const localOrders = localStorage.getItem('samo_orders_v39');
-      if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
-      populateCompanyDropdown();
-      populateReportCompanyDropdown();
-      renderProducts();
-      renderOrders();
-      renderPosProducts();
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
     }
 
-    async function loadRemoteData() {
-      try {
-        const res = await fetch(API_URL, { cache: 'no-store' });
-        const data = await res.json();
-        if (data && data.success) {
-          if (data.products && data.products.length > 0) {
-            inventory = data.products;
-            localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-          }
-          if (Array.isArray(data.orders)) {
-            ordersList = data.orders;
-            localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-          }
-        }
-        populateCompanyDropdown();
-        populateReportCompanyDropdown();
-        renderProducts();
-        renderOrders();
-        renderPosProducts();
-        if (isAdminUnlocked) updateReportsView();
-      } catch(e) {}
+    const API_URL = "https://script.google.com/macros/s/AKfycbyfXHYmrxVGhNYzo7LlOQkWI9-f_z_z9Fc3LmVlO9VhC0QG8BXeCpyiwpNso0FHj1vm/exec";
+
+    function parseAppNumber(value) {
+      if (value === null || value === undefined || value === '') return 0;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      let s = String(value).trim().replace(/,/g, '').replace(/٬/g, '').replace(/،/g, '');
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
     }
 
     async function postToApi(payload) {
@@ -946,10 +1016,39 @@
         body: JSON.stringify(payload)
       });
       const text = await response.text();
-      let res = {};
-      try { res = JSON.parse(text); } catch(e){}
-      return res;
+      let result = {};
+      try { result = JSON.parse(text); } catch (e) {}
+      if (!response.ok || result.status === 'error') {
+        throw new Error(result.message || ('HTTP ' + response.status));
+      }
+      return result;
     }
+
+    let inventory = [];
+    let ordersList = [];
+    let pendingSyncOrders = [];
+    let pendingSyncProducts = [];
+    let savedPharmacies = [];
+    let cartMap = {};
+    let posCartMap = {};
+    let currentFilter = 'all';
+    let hideOutStock = false;
+    let posHideOutStock = false;
+    let targetSearchInputId = 'search-box';
+    
+    let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
+    let html5QrScanner = null;
+    let currentInspectingOrderIndex = null;
+    let activeStaffName = localStorage.getItem('samo_active_staff') || '';
+    let staffNamesList = JSON.parse(localStorage.getItem('samo_staff_names_list') || '["أحمد", "محمد", "علي", "سجاد"]');
+    let targetImageInputId = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initSystem();
+      window.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
+      });
+    });
 
     function populateStaffDropdown() {
       const select = document.getElementById('staff-name-select');
@@ -964,6 +1063,36 @@
       updateStaffBadgeUI();
     }
 
+    function addNewStaffNamePrompt() {
+      if (!isAdminUnlocked) {
+        alert("عذراً، إضافة موظف جديد متاحة فقط لصاحب المذخر.");
+        return;
+      }
+      const newName = prompt("أدخل اسم الموظف الجديد لإضافته للنظام:");
+      if (newName && newName.trim() !== '') {
+        const trimmed = newName.trim();
+        if (!staffNamesList.includes(trimmed)) {
+          staffNamesList.push(trimmed);
+          localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
+          populateStaffDropdown();
+          onStaffSelected(trimmed);
+          if (isAdminUnlocked) renderStaffManagementView();
+          alert(`تمت إضافة الموظف "${trimmed}" بنجاح!`);
+        } else {
+          onStaffSelected(trimmed);
+          alert(`الموظف "${trimmed}" موجود مسبقاً.`);
+        }
+      }
+    }
+
+    function toggleDropdown(id, event) {
+      event.stopPropagation();
+      document.querySelectorAll('.dropdown-box').forEach(el => {
+        if (el.id !== id) el.classList.remove('show');
+      });
+      document.getElementById(id).classList.toggle('show');
+    }
+
     function updateStaffBadgeUI() {
       const select = document.getElementById('staff-name-select');
       if (select && activeStaffName) select.value = activeStaffName;
@@ -971,56 +1100,142 @@
       if (posBadge) posBadge.innerText = activeStaffName || 'غير مسجل';
     }
 
-    function toggleHideOutStock() { hideOutStock = !hideOutStock; renderProducts(); }
-    function togglePosHideOutStock() { posHideOutStock = !posHideOutStock; renderPosProducts(); }
+    function toggleHideOutStock() {
+      hideOutStock = !hideOutStock;
+      renderProducts();
+    }
+
+    function togglePosHideOutStock() {
+      posHideOutStock = !posHideOutStock;
+      renderPosProducts();
+    }
 
     function openCameraScanner(inputId) {
       targetSearchInputId = inputId || 'search-box';
       document.getElementById('modal-scanner').style.display = 'flex';
-      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
-      html5QrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 150 } }, (text) => {
-        const inputElem = document.getElementById(targetSearchInputId);
-        if (inputElem) {
-          inputElem.value = text;
-          if (targetSearchInputId === 'pos-search-box') renderPosProducts();
-          else renderProducts();
-        }
-        closeCameraScanner();
-      }, () => {}).catch(() => { alert("الكاميرا غير متاحة"); closeCameraScanner(); });
+      if (!html5QrScanner) { html5QrScanner = new Html5Qrcode("reader"); }
+      html5QrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        (decodedText) => {
+          if (navigator.vibrate) navigator.vibrate(100);
+          const inputElem = document.getElementById(targetSearchInputId);
+          if (inputElem) {
+            inputElem.value = decodedText;
+            if (targetSearchInputId === 'pos-search-box') renderPosProducts();
+            else renderProducts();
+          }
+          closeCameraScanner();
+        },
+        () => {}
+      ).catch(() => { alert("يرجى إعطاء الإذن للكاميرا."); closeCameraScanner(); });
     }
 
     function closeCameraScanner() {
-      if (html5QrScanner) html5QrScanner.stop().then(() => { document.getElementById('modal-scanner').style.display = 'none'; }).catch(() => { document.getElementById('modal-scanner').style.display = 'none'; });
-      else document.getElementById('modal-scanner').style.display = 'none';
+      if (html5QrScanner) {
+        html5QrScanner.stop().then(() => { document.getElementById('modal-scanner').style.display = 'none'; }).catch(() => { document.getElementById('modal-scanner').style.display = 'none'; });
+      } else { document.getElementById('modal-scanner').style.display = 'none'; }
+    }
+
+    function openCameraForImage(inputId) {
+      targetImageInputId = inputId;
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.capture = 'environment';
+      fileInput.onchange = e => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = event => {
+            document.getElementById(targetImageInputId).value = event.target.result;
+            alert("تم التقاط وتحميل صورة المنتج بنجاح!");
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      fileInput.click();
     }
 
     function smartDetectForm(name, rawForm) {
       if (rawForm && rawForm !== 'Tablet' && rawForm.trim() !== '') return rawForm.trim();
       if (!name) return 'Tablet';
       const low = name.toLowerCase();
-      if (low.includes('amp')) return 'Ampoule';
-      if (low.includes('vial')) return 'Vial';
-      if (low.includes('syrup')) return 'Syrup';
-      if (low.includes('caps')) return 'Capsule';
+      if (low.includes('amp') || low.includes('أمبول')) return 'Ampoule';
+      if (low.includes('vial') || low.includes('فيال')) return 'Vial';
+      if (low.includes('syrup') || low.includes('شراب')) return 'Syrup';
+      if (low.includes('susp') || low.includes('معلق')) return 'Suspension';
+      if (low.includes('inj') || low.includes('حقن')) return 'Injection';
+      if (low.includes('caps') || low.includes('كبسول')) return 'Capsule';
+      if (low.includes('tab') || low.includes('حبوب')) return 'Tablet';
       return rawForm || 'Tablet';
+    }
+
+    function checkExpiryStatus(expStr) {
+      if (!expStr) return 'valid';
+      const parts = expStr.split(/[-/]/);
+      if (parts.length < 2) return 'valid';
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      const expDate = new Date(year, month, 1);
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      if (expDate < currentMonthStart) return 'expired';
+      const diffMonths = (year - now.getFullYear()) * 12 + (month - now.getMonth());
+      return (diffMonths >= 0 && diffMonths <= 6) ? 'near' : 'valid';
+    }
+
+    function initSystem() {
+      populateStaffDropdown();
+      updateStaffBadgeUI();
+
+      const localStock = localStorage.getItem('samo_inventory_v39');
+      if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
+      const localOrders = localStorage.getItem('samo_orders_v39');
+      if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
+
+      populateCompanyDropdown();
+      populateReportCompanyDropdown();
+      renderAlerts();
+      renderProducts();
+      renderOrders();
+      renderPosProducts();
+
+      if (isAdminUnlocked) {
+        unlockAdminUI(true);
+      } else {
+        lockAdminUI(true);
+      }
+
+      window.addEventListener('online', () => { triggerSync(); });
+      loadRemoteData();
     }
 
     function populateCompanyDropdown() {
       const select = document.getElementById('filter-company');
       if (!select) return;
-      const set = new Map();
-      inventory.forEach(p => { const c = (p.company || '').trim(); if (c) set.set(c.toLowerCase(), c); });
-      const arr = Array.from(set.values()).sort((a,b) => a.localeCompare(b, 'ar'));
-      select.innerHTML = '<option value="">-- جميع الشركات --</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      const companySet = new Map();
+      inventory.forEach(p => {
+        const raw = (p.company || '').trim();
+        if (raw) companySet.set(raw.toLowerCase(), raw);
+      });
+      const sorted = Array.from(companySet.values()).sort((a, b) => a.localeCompare(b, 'ar'));
+      select.innerHTML = '<option value="">-- جميع الشركات --</option>' + sorted.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
     function populateReportCompanyDropdown() {
       const select = document.getElementById('report-company-select');
       if (!select) return;
-      const set = new Map();
-      inventory.forEach(p => { const c = (p.company || '').trim(); if (c) set.set(c.toLowerCase(), c); });
-      const arr = Array.from(set.values()).sort((a,b) => a.localeCompare(b, 'ar'));
-      select.innerHTML = '<option value="">-- اختر الشركة --</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      const companies = new Map();
+      (inventory || []).forEach(p => {
+        const raw = String(p.company || '').trim();
+        if (raw) companies.set(raw.toLowerCase(), raw);
+      });
+      const current = select.value;
+      const list = Array.from(companies.values()).sort((a, b) => a.localeCompare(b, 'ar'));
+      select.innerHTML = '<option value="">-- اختر الشركة --</option>' + list.map(c => `<option value="${c}">${c}</option>`).join('');
+      if (list.includes(current)) select.value = current;
+      updateCompanyReport();
     }
 
     function updateCompanyReport() {
@@ -1028,35 +1243,107 @@
       const itemsEl = document.getElementById('report-company-items');
       const amountEl = document.getElementById('report-company-amount');
       if (!select || !itemsEl || !amountEl) return;
-      const comp = String(select.value || '').trim().toLowerCase();
-      if (!comp) { itemsEl.innerText = '0 مادة'; amountEl.innerText = '0 د.ع'; return; }
-      const list = inventory.filter(p => String(p.company || '').trim().toLowerCase() === comp);
-      const totalQty = list.reduce((s, p) => s + parseAppNumber(p.quantity), 0);
-      const totalVal = list.reduce((s, p) => s + (parseAppNumber(p.quantity) * parseAppNumber(p.price)), 0);
-      itemsEl.innerText = list.length + ' مادة (العدد: ' + totalQty.toLocaleString() + ')';
-      amountEl.innerText = totalVal.toLocaleString() + ' د.ع';
+      const selected = String(select.value || '').trim().toLowerCase();
+      if (!selected) {
+        itemsEl.innerText = '0 مادة';
+        amountEl.innerText = '0 د.ع';
+        return;
+      }
+      const companyItems = (inventory || []).filter(p => String(p.company || '').trim().toLowerCase() === selected);
+      const totalItemsCount = companyItems.reduce((sum, p) => sum + parseAppNumber(p.quantity), 0);
+      const amount = companyItems.reduce((sum, p) => sum + (parseAppNumber(p.quantity) * parseAppNumber(p.price)), 0);
+      itemsEl.innerText = companyItems.length.toLocaleString() + ' مادة (العدد: ' + totalItemsCount.toLocaleString() + ')';
+      amountEl.innerText = amount.toLocaleString() + ' د.ع';
+    }
+
+    async function triggerSync() {
+      const lbl = document.getElementById('conn-lbl');
+      if (lbl) lbl.innerText = "جاري مزامنة السحابة...";
+      await loadRemoteData();
+      alert("تمت المزامنة بنجاح!");
+    }
+
+    async function loadRemoteData() {
+      const lbl = document.getElementById('conn-lbl');
+      try {
+        const res = await fetch(API_URL, { cache: 'no-store' });
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.products && data.products.length > 0) {
+            inventory = data.products.map(p => ({
+              id: String(p.id || ''),
+              name: String(p.name || '').trim(),
+              image: p.image || '',
+              company: String(p.company || '').trim(),
+              form: smartDetectForm(p.name, p.form),
+              barcode: String(p.barcode || '').trim(),
+              quantity: parseAppNumber(p.quantity),
+              minQty: parseAppNumber(p.minQty) || 5,
+              price: parseAppNumber(p.price),
+              totalPrice: parseAppNumber(p.totalPrice),
+              bonus: parseAppNumber(p.bonus),
+              expiryDate: p.expiryDate || ''
+            })).filter(p => p.name);
+            localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+          }
+          if (Array.isArray(data.orders)) {
+            ordersList = data.orders;
+            localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+          }
+        }
+        populateCompanyDropdown();
+        populateReportCompanyDropdown();
+        renderAlerts();
+        renderProducts();
+        renderOrders();
+        renderPosProducts();
+        if (isAdminUnlocked) {
+          updateReportsView();
+          renderStaffManagementView();
+        }
+        if (lbl) lbl.innerText = isAdminUnlocked ? "وضع صاحب المذخر (متصل سحابياً)" : "وضع الموظف (متصل سحابياً)";
+      } catch (e) {
+        if (lbl) lbl.innerText = "أوفلاين (الذاكرة المحلية تعمل بكفاءة)";
+      }
+    }
+
+    function renderAlerts() {
+      const container = document.getElementById('alerts-container');
+      if (!container) return;
+      let expiredCount = 0, nearCount = 0, lowCount = 0;
+      inventory.forEach(p => {
+        const st = checkExpiryStatus(p.expiryDate);
+        if (st === 'expired') expiredCount++;
+        else if (st === 'near') nearCount++;
+        if (p.quantity <= (p.minQty || 5)) lowCount++;
+      });
+      let html = '';
+      if (expiredCount > 0) html += `<div class="alert-strip alert-expired"><span>⚠️ يوجد ${expiredCount} مادة منتهية الصلاحية بالمخزن!</span></div>`;
+      if (nearCount > 0) html += `<div class="alert-strip alert-near"><span>⏳ يوجد ${nearCount} مادة قاربت على الانتهاء</span></div>`;
+      if (lowCount > 0) html += `<div class="alert-strip alert-low"><span>📦 يوجد ${lowCount} مادة نواقص بالمخزن</span></div>`;
+      container.innerHTML = html;
     }
 
     function renderProducts() {
       const container = document.getElementById('prod-list-container');
       if (!container) return;
       const q = document.getElementById('search-box').value.trim().toLowerCase();
-      const comp = document.getElementById('filter-company') ? document.getElementById('filter-company').value.trim().toLowerCase() : '';
+      const companyFilter = document.getElementById('filter-company').value;
       let list = inventory;
-      if (hideOutStock) list = list.filter(i => Number(i.quantity) > 0);
       if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)) || (i.company && i.company.toLowerCase().includes(q)));
-      if (comp) list = list.filter(i => (i.company || '').trim().toLowerCase() === comp);
+      if (hideOutStock) list = list.filter(i => i.quantity > 0);
+      if (companyFilter) list = list.filter(i => (i.company || '').trim().toLowerCase() === companyFilter.trim().toLowerCase());
 
       if (list.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
+        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
         return;
       }
 
       container.innerHTML = list.map(item => {
         const inCart = cartMap[item.id] || 0;
-        const isOut = Number(item.quantity) <= 0;
+        const isOutOfStock = item.quantity <= 0;
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
-        let action = isOut ? `<span class="badge badge-out">نافد من المخزن</span>` :
+        let cartActionHtml = isOutOfStock ? `<span class="badge badge-out">نافد من المخزن</span>` :
           (inCart === 0 ? `<button class="btn-add-cart-wide" onclick="modifyCartQty('${item.id}', 1)">+ إضافة للسلة</button>` :
           `<div class="counter-control-wide"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><span class="counter-val-wide" onclick="promptDirectCartQty('${item.id}')">${inCart}</span><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button></div>`);
 
@@ -1073,7 +1360,7 @@
           <div class="prod-card">
             <div class="prod-top"><div class="prod-info-col"><div class="prod-name">${item.name}</div>
             <div class="prod-sub-info"><span class="badge badge-form">${smartDetectForm(item.name, item.form)}</span> ${item.company ? `<span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${item.company}</span>` : ''}</div></div></div>
-            <div>${action}</div>
+            <div class="prod-cart-action-area">${cartActionHtml}</div>
             <div class="prod-bottom"><span class="prod-price">${netPrice.toLocaleString()} د.ع</span><span class="prod-stock-lbl">المتوفر: ${item.quantity}</span></div>
             ${adminTools}
           </div>
@@ -1134,7 +1421,7 @@
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
         const sub = netPrice * qty;
         total += sub;
-        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px solid #eee; font-size:12px;"><span><b>${item.name}</b> (×${qty})</span><span style="color:var(--ios-green);">${sub.toLocaleString()} د.ع</span></div>`;
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px solid #eee; font-size:12px;"><span><b>${item.name}</b> (×${qty})</span><span>${sub.toLocaleString()} د.ع</span></div>`;
       }).join('');
       document.getElementById('pos-total-price').innerText = total.toLocaleString() + ' د.ع';
     }
@@ -1179,13 +1466,13 @@
       setMainTab('log');
     }
 
-    function modifyCartQty(id, delta) {
-      const prod = inventory.find(i => i.id === id);
+    function modifyCartQty(prodId, delta) {
+      const prod = inventory.find(i => i.id === prodId);
       if (!prod) return;
-      const cur = cartMap[id] || 0;
+      const cur = cartMap[prodId] || 0;
       const next = cur + delta;
-      if (next <= 0) delete cartMap[id];
-      else if (next <= prod.quantity) cartMap[id] = next;
+      if (next <= 0) delete cartMap[prodId];
+      else if (next <= prod.quantity) cartMap[prodId] = next;
       renderProducts();
     }
 
@@ -1262,55 +1549,14 @@
           <div style="font-size:12px; color:var(--ios-sub);">📅 ${o.date} | المجهز: <b>${o.staffName || 'غير مسجل'}</b></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
             <span style="color:var(--ios-green); font-weight:900;">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
-            <div style="display:flex; gap:6px; align-items:center;">
+            <div>
               <span class="badge" style="background:#e0f2fe; color:#0369a1;">${o.status}</span>
-              <button class="btn btn-sec" style="padding:4px 8px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
-              ${isAdminUnlocked ? `
-                <button class="btn" style="padding:4px 8px; font-size:11px; background:var(--ios-blue);" onclick="openInspectOrderModal(${idx})">فحص وتعديل</button>
-                <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>
-              ` : ''}
+              <button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
+              ${isAdminUnlocked ? `<button class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>` : ''}
             </div>
           </div>
         </div>
       `).join('');
-    }
-
-    function openInspectOrderModal(idx) {
-      currentInspectingOrderIndex = idx;
-      const o = ordersList[idx];
-      document.getElementById('inspect-modal-title').innerText = `فحص وتعديل الطلبية (${o.orderNumber})`;
-      const box = document.getElementById('inspect-order-items-box');
-      box.innerHTML = (o.items || []).map((it, i) => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #eee; font-size:13px;">
-          <span><b>${it.name}</b> (${it.price} د.ع)</span>
-          <input type="number" id="inspect-qty-${i}" value="${it.quantity}" style="width:60px; text-align:center; border:1px solid #ccc; border-radius:6px; padding:3px;">
-        </div>
-      `).join('');
-      document.getElementById('modal-inspect-order').style.display = 'flex';
-    }
-    function closeInspectModal() { document.getElementById('modal-inspect-order').style.display = 'none'; }
-
-    async function approveAndSignOrder() {
-      if (currentInspectingOrderIndex === null) return;
-      const o = ordersList[currentInspectingOrderIndex];
-      (o.items || []).forEach((it, i) => {
-        const inp = document.getElementById(`inspect-qty-${i}`);
-        if (inp) it.quantity = Math.max(0, parseInt(inp.value, 10) || 0);
-      });
-      o.items = o.items.filter(it => it.quantity > 0);
-      o.totalAmount = o.items.reduce((s, it) => s + (it.price * it.quantity), 0);
-      o.status = 'معتمد للتجهيز';
-      o.staffName = activeStaffName || 'مسؤول';
-
-      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-      closeInspectModal();
-      renderOrders();
-
-      try {
-        await postToApi({ action: 'new_order', order: o });
-        await loadRemoteData();
-      } catch(e) {}
-      alert("تم اعتماد وتعديل الطلبية بنجاح!");
     }
 
     async function deleteOrderRecord(idx) {
@@ -1327,47 +1573,6 @@
       }
     }
 
-    function openEditItemModal(id) {
-      const item = inventory.find(i => i.id === id);
-      if (!item) return;
-      document.getElementById('edit-prod-id').value = item.id;
-      document.getElementById('edit-name').value = item.name;
-      document.getElementById('edit-image').value = item.image || '';
-      document.getElementById('edit-company').value = item.company || '';
-      document.getElementById('edit-form').value = item.form || 'Tablet';
-      document.getElementById('edit-barcode').value = item.barcode || '';
-      document.getElementById('edit-qty').value = item.quantity;
-      document.getElementById('edit-min-qty').value = item.minQty || 5;
-      document.getElementById('edit-price').value = item.price;
-      document.getElementById('edit-bonus').value = item.bonus || 0;
-      document.getElementById('edit-exp').value = item.expiryDate || '';
-      document.getElementById('modal-edit-item').style.display = 'flex';
-    }
-    function closeEditModal() { document.getElementById('modal-edit-item').style.display = 'none'; }
-
-    let currentBarcodeData = { name: '', barcode: '', price: 0 };
-    function openDirectBarcodeModal(name, barcode, price) {
-      currentBarcodeData = { name, barcode: barcode || ("880" + Math.floor(10000000 + Math.random() * 90000000)), price };
-      document.getElementById('prev-barcode-name').innerText = currentBarcodeData.name;
-      document.getElementById('prev-barcode-num').innerText = currentBarcodeData.barcode;
-      document.getElementById('prev-barcode-price').innerText = `السعر: ${Number(currentBarcodeData.price).toLocaleString()} د.ع`;
-      document.getElementById('prev-barcode-svg').innerHTML = `<svg width="180" height="45" viewBox="0 0 140 40" style="display:block; margin:auto;"><rect x="2" y="0" width="2" height="40" fill="#000"/><rect x="8" y="0" width="4" height="40" fill="#000"/><rect x="16" y="0" width="2" height="40" fill="#000"/><rect x="22" y="0" width="3" height="40" fill="#000"/><rect x="30" y="0" width="2" height="40" fill="#000"/><rect x="36" y="0" width="4" height="40" fill="#000"/><rect x="44" y="0" width="1" height="40" fill="#000"/><rect x="50" y="0" width="3" height="40" fill="#000"/><rect x="58" y="0" width="2" height="40" fill="#000"/><rect x="64" y="0" width="4" height="40" fill="#000"/><rect x="72" y="0" width="2" height="40" fill="#000"/><rect x="80" y="0" width="3" height="40" fill="#000"/><rect x="88" y="0" width="1" height="40" fill="#000"/><rect x="94" y="0" width="4" height="40" fill="#000"/><rect x="102" y="0" width="2" height="40" fill="#000"/><rect x="108" y="0" width="3" height="40" fill="#000"/><rect x="116" y="0" width="2" height="40" fill="#000"/><rect x="122" y="0" width="4" height="40" fill="#000"/><rect x="130" y="0" width="2" height="40" fill="#000"/></svg>`;
-      document.getElementById('modal-direct-barcode').style.display = 'flex';
-    }
-    function closeDirectBarcodeModal() { document.getElementById('modal-direct-barcode').style.display = 'none'; }
-    function executeDirectThermalPrint() { window.print(); closeDirectBarcodeModal(); }
-    function printBarcodeDirectFromAdd() { openDirectBarcodeModal(document.getElementById('in-name').value || 'مادة', document.getElementById('in-barcode').value, Number(document.getElementById('in-price').value)); }
-    function printBarcodeDirectFromEdit() { openDirectBarcodeModal(document.getElementById('edit-name').value, document.getElementById('edit-barcode').value, Number(document.getElementById('edit-price').value)); }
-
-    function printInvoiceA4(idx) {
-      const o = ordersList[idx];
-      if (!o) return;
-      document.getElementById('inv-meta-info').innerHTML = `<div>رقم القائمة: ${o.orderNumber}</div><div>الصيدلية: ${o.pharmacyName}</div><div>التاريخ: ${o.date}</div>`;
-      document.getElementById('inv-table-rows').innerHTML = (o.items || []).map((it, i) => `<tr><td style="border:1px solid #000; padding:4px; text-align:center;">${i+1}</td><td style="border:1px solid #000; padding:4px;">${it.name}</td><td style="border:1px solid #000; padding:4px; text-align:center;">${it.form || 'Tablet'}</td><td style="border:1px solid #000; padding:4px; text-align:center;">${it.expiryDate || '—'}</td><td style="border:1px solid #000; padding:4px; text-align:center;">${it.quantity}</td><td style="border:1px solid #000; padding:4px;">${it.price.toLocaleString()} د.ع</td><td style="border:1px solid #000; padding:4px;">${(it.price * it.quantity).toLocaleString()} د.ع</td></tr>`).join('');
-      document.getElementById('inv-total-box').innerHTML = `المجموع الكلي: ${(o.totalAmount || 0).toLocaleString()} دينار عراقي | المجهز: ${o.staffName || 'غير مسجل'}`;
-      window.print();
-    }
-
     function renderStaffManagementView() {
       const container = document.getElementById('staff-report-container');
       if (!container) return;
@@ -1376,6 +1581,58 @@
           <div style="font-size: 15px; font-weight: 800;">👤 الموظف: ${name}</div>
         </div>
       `).join('');
+    }
+
+    function triggerAdmin() {
+      if (isAdminUnlocked) {
+        isAdminUnlocked = false;
+        localStorage.removeItem('samo_admin_logged');
+        lockAdminUI();
+      } else {
+        const p = prompt("الرمز السري لصاحب المذخر:");
+        if (p === "admin2026") {
+          isAdminUnlocked = true;
+          localStorage.setItem('samo_admin_logged', 'true');
+          unlockAdminUI();
+        } else if (p !== null) alert("الرمز غير صحيح!");
+      }
+    }
+
+    function unlockAdminUI(auto = false) {
+      isAdminUnlocked = true;
+      document.getElementById('admin-toggle-btn').innerText = "خروج المدير";
+      document.getElementById('admin-toggle-btn').style.background = "var(--ios-green)";
+      document.getElementById('conn-lbl').innerText = "وضع صاحب المذخر (تحكم كامل)";
+      document.getElementById('add-prod-btn').style.display = "inline-flex";
+      document.getElementById('admin-header-user-picker').style.display = "flex";
+      document.getElementById('tab-btn-pos').style.display = "block";
+      document.getElementById('tab-btn-staff').style.display = "block";
+      document.getElementById('tab-btn-reports').style.display = "block";
+      if (!auto) loadRemoteData();
+      updateReportsView();
+    }
+
+    function lockAdminUI() {
+      isAdminUnlocked = false;
+      document.getElementById('admin-toggle-btn').innerText = "دخول المذخر";
+      document.getElementById('admin-toggle-btn').style.background = "#3a3a3c";
+      document.getElementById('conn-lbl').innerText = "وضع الموظف (عرض وتجهيز)";
+      document.getElementById('add-prod-btn').style.display = "none";
+      document.getElementById('admin-header-user-picker').style.display = "none";
+      document.getElementById('tab-btn-pos').style.display = "none";
+      document.getElementById('tab-btn-staff').style.display = "none";
+      document.getElementById('tab-btn-reports').style.display = "none";
+      setMainTab('home');
+    }
+
+    function updateReportsView() {
+      const phMap = {};
+      ordersList.forEach(o => { phMap[o.pharmacyName] = 1; });
+      document.getElementById('fin-ph-count').innerText = Object.keys(phMap).length + ' صيدلية';
+      document.getElementById('fin-orders-count').innerText = ordersList.length + ' طلب';
+      document.getElementById('fin-stock-val').innerText = inventory.reduce((s,p)=>s+(p.quantity*p.price),0).toLocaleString() + ' د.ع';
+      document.getElementById('fin-dispatched-val').innerText = ordersList.reduce((s,o)=>s+o.totalAmount,0).toLocaleString() + ' د.ع';
+      populateReportCompanyDropdown();
     }
 
     function setMainTab(t) {
@@ -1394,8 +1651,20 @@
       if (t === 'reports' && isAdminUnlocked) updateReportsView();
       if (t === 'staff' && isAdminUnlocked) renderStaffManagementView();
       if (t === 'pos' && isAdminUnlocked) renderPosProducts();
-      if (t === 'log') { loadRemoteData(); renderOrders(); }
+      if (t === 'log') { renderOrders(); }
+    }
+
+    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; }
+    function closeAddModal() { document.getElementById('modal-add-item').style.display = 'none'; }
+    function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
+    function closeCameraScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
+
+    function exportInventoryCSV() { downloadCSV("Name,Company,Quantity,Price\n" + inventory.map(i=>`"${i.name}","${i.company}",${i.quantity},${i.price}`).join("\n"), "inventory.csv"); }
+    function exportOrdersCSV() { downloadCSV("Order,Pharmacy,Total,Date\n" + ordersList.map(o=>`"${o.orderNumber}","${o.pharmacyName}",${o.totalAmount},"${o.date}"`).join("\n"), "orders.csv"); }
+    function exportStaffCSV() { downloadCSV("Staff\n" + staffNamesList.join("\n"), "staff.csv"); }
+    function downloadCSV(c, f) {
+      const blob = new Blob(["\uFEFF"+c], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = f; a.click();
     }
   </script>
-</body>
-</html>
