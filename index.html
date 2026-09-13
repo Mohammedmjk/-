@@ -538,6 +538,7 @@
   <div class="tabs-bar">
     <div class="tab-item active" id="tab-btn-home" onclick="setMainTab('home')">الأدوية والمخزن</div>
     <div class="tab-item" id="tab-btn-pos" style="display: none;" onclick="setMainTab('pos')">🛒 نافذة نقطة البيع (POS)</div>
+    <div class="tab-item" id="tab-btn-incoming" style="display: none;" onclick="setMainTab('incoming')">📥 الطلبيات الواردة <span id="incoming-count-badge" style="display:none;background:#ff3b30;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px;margin-right:3px;">0</span></div>
     <div class="tab-item" id="tab-btn-log" onclick="setMainTab('log')">سجل الصادر</div>
     <div class="tab-item" id="tab-btn-staff" style="display: none;" onclick="setMainTab('staff')">👤 تقارير الموظفين</div>
     <div class="tab-item" id="tab-btn-reports" style="display: none;" onclick="setMainTab('reports')">التقارير المالية</div>
@@ -664,6 +665,17 @@
     </div>
   </div>
 
+  <div id="view-incoming" style="display: none; padding: 0 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:var(--ios-blue);">📥 الطلبيات الواردة</div>
+        <div style="font-size:10px;color:var(--ios-sub);margin-top:2px;">الطلبات الواردة من مستخدمي البرنامج. يتم فحصها وتعديل كمياتها ثم اعتمادها لتنتقل إلى سجل الصادر.</div>
+      </div>
+      <button class="btn btn-sec" style="font-size:11px;padding:6px 10px;" onclick="triggerSync()">☁️ مزامنة</button>
+    </div>
+    <div id="incoming-orders-container" class="product-list"></div>
+  </div>
+
   <div id="view-log" style="display: none; padding: 0 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap:8px;">
       <div>
@@ -681,6 +693,18 @@
       <button id="admin-add-staff-btn" class="btn" style="display: none; background: var(--ios-green); font-size: 12px; padding: 6px 12px;" onclick="addNewStaffNamePrompt()">+ إضافة موظف جديد</button>
     </div>
     <div id="staff-report-container" class="product-list"></div>
+    <div class="prod-card" style="margin-top:12px;">
+      <div style="font-size:14px;font-weight:800;color:var(--ios-blue);margin-bottom:8px;">📊 تقرير موظف لفترة محددة</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+        <div style="flex:1;min-width:170px;"><label style="font-size:10px;color:var(--ios-sub);">الموظف</label><select id="staff-report-select" style="width:100%;padding:8px;border:1px solid var(--ios-border);border-radius:9px;"></select></div>
+        <div><label style="font-size:10px;color:var(--ios-sub);">من</label><input type="date" id="staff-report-from" style="padding:8px;border:1px solid var(--ios-border);border-radius:9px;"></div>
+        <div><label style="font-size:10px;color:var(--ios-sub);">إلى</label><input type="date" id="staff-report-to" style="padding:8px;border:1px solid var(--ios-border);border-radius:9px;"></div>
+        <button class="btn" onclick="buildStaffPeriodReport()">عرض التقرير</button>
+        <button class="btn" style="background:#107c41;" onclick="exportSelectedStaffExcel()">📊 Excel</button>
+        <button class="btn" style="background:#dc2626;" onclick="exportSelectedStaffPDF()">📄 PDF</button>
+      </div>
+      <div id="staff-period-report" style="margin-top:12px;"></div>
+    </div>
   </div>
 
   <div id="view-reports" style="display: none;">
@@ -824,7 +848,7 @@
       </div>
       <div id="inspect-order-items-box" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;"></div>
       <div style="display: flex; gap: 8px;">
-        <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" id="inspect-save-btn" onclick="approveAndSignOrder()">حفظ التعديلات ✓</button>
+        <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" id="inspect-save-btn" onclick="approveAndSignOrder()">اعتماد وتجهيز ✓</button>
         <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إلغاء</button>
       </div>
     </div>
@@ -1072,6 +1096,7 @@
       if (newName && newName.trim() !== '') {
         const trimmed = newName.trim();
         if (!staffNamesList.includes(trimmed)) {
+          postToApi({action:'add_staff',name:trimmed}).catch(()=>{});
           staffNamesList.push(trimmed);
           localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
           populateStaffDropdown();
@@ -1286,6 +1311,7 @@
             })).filter(p => p.name);
             localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
           }
+          if (Array.isArray(data.staffNames) && data.staffNames.length) { staffNamesList = data.staffNames.map(String); localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList)); populateStaffDropdown(); }
           if (Array.isArray(data.orders)) {
             ordersList = data.orders;
             localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
@@ -1296,6 +1322,7 @@
         renderAlerts();
         renderProducts();
         renderOrders();
+        renderIncomingOrders();
         renderPosProducts();
         if (isAdminUnlocked) {
           updateReportsView();
@@ -1324,6 +1351,15 @@
       container.innerHTML = html;
     }
 
+    async function setInventoryQty(prodId,value){
+      if(!isAdminUnlocked)return alert('تعديل المخزون متاح فقط لصاحب المذخر.');
+      const item=inventory.find(i=>String(i.id)===String(prodId)); if(!item)return;
+      const qty=Math.max(0,Math.floor(Number(value))); if(!Number.isFinite(qty))return;
+      item.quantity=qty; item.totalPrice=qty*Number(item.price||0); localStorage.setItem('samo_inventory_v39',JSON.stringify(inventory)); renderProducts(); renderAlerts();
+      try{await postToApi({action:'update_product',product:item});await loadRemoteData();}catch(e){alert('تم تغيير العدد محلياً لكن تعذر مزامنته مع الشيت.');}
+    }
+    function changeInventoryQty(prodId,delta){const item=inventory.find(i=>String(i.id)===String(prodId));if(!item)return;setInventoryQty(prodId,Number(item.quantity||0)+Number(delta||0));}
+
     function renderProducts() {
       const container = document.getElementById('prod-list-container');
       if (!container) return;
@@ -1349,7 +1385,10 @@
 
         let adminTools = isAdminUnlocked ? `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:0.5px dashed var(--ios-border); padding-top:6px;">
-            <div style="display:flex; gap:6px;">
+            <div style="display:flex; gap:5px;align-items:center;flex-wrap:wrap;">
+              <button class="btn btn-sec" style="font-size:11px;padding:2px 7px;" onclick="changeInventoryQty('${item.id}',-1)">−</button>
+              <input type="number" min="0" value="${Number(item.quantity||0)}" style="width:62px;text-align:center;padding:4px;border:1px solid var(--ios-border);border-radius:7px;" onchange="setInventoryQty('${item.id}',this.value)">
+              <button class="btn btn-sec" style="font-size:11px;padding:2px 7px;" onclick="changeInventoryQty('${item.id}',1)">+</button>
               <button class="btn btn-sec" style="font-size:11px; padding:2px 8px;" onclick="openEditItemModal('${item.id}')">✏️ تعديل</button>
               <button class="btn btn-sec" style="font-size:11px; padding:2px 8px; background:#e0f2fe; color:#0369a1;" onclick="openDirectBarcodeModal('${item.name}', '${item.barcode}', ${netPrice})">🖨️ باركود</button>
             </div>
@@ -1468,7 +1507,7 @@
         orderNumber: 'POS-' + Math.floor(1000 + Math.random() * 9000),
         pharmacyName: ph, phone: phone,
         totalAmount: newItems.reduce((s, x) => s + (x.price * x.quantity), 0),
-        status: 'معتمد للتجهيز',
+        status: 'قيد المراجعة',
         date: new Date().toLocaleString('ar-IQ'),
         staffName: activeStaffName,
         items: newItems
@@ -1613,39 +1652,75 @@
       setMainTab('log');
     }
 
+    function isDeliveredStatus(o) {
+      return ['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(o && o.status || '').trim().toLowerCase());
+    }
+    function isApprovedStatus(o) {
+      return ['معتمد','معتمد للتجهيز','مجهزة','approved'].includes(String(o && o.status || '').trim().toLowerCase());
+    }
+    function isReviewStatus(o) { return !isDeliveredStatus(o) && !isApprovedStatus(o); }
+
+    function renderIncomingOrders() {
+      const container = document.getElementById('incoming-orders-container');
+      if (!container) return;
+      const incoming = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => isReviewStatus(x.o));
+      const badge = document.getElementById('incoming-count-badge');
+      if (badge) { badge.innerText = incoming.length; badge.style.display = incoming.length ? 'inline-block' : 'none'; }
+      if (!incoming.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ios-sub);">لا توجد طلبيات واردة بانتظار الفحص والاعتماد</div>';
+        return;
+      }
+      container.innerHTML = incoming.map(({o,idx}) => `
+        <div class="prod-card" style="border-right:4px solid var(--ios-orange);">
+          <div style="display:flex;justify-content:space-between;font-weight:800;"><span>🏥 ${escapeHtml(o.pharmacyName)}</span><span style="color:var(--ios-blue);">${escapeHtml(o.orderNumber)}</span></div>
+          <div style="font-size:11px;color:var(--ios-sub);margin-top:3px;">📅 ${escapeHtml(o.date)} | المواد: ${(o.items||[]).length} | المبلغ المطلوب: ${(o.totalAmount||0).toLocaleString()} د.ع</div>
+          <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
+            <button class="btn" style="background:var(--ios-green);" onclick="openInspectModal(${idx})">🔎 فحص وتعديل</button>
+            <button class="btn btn-sec" onclick="printInvoiceA4(${idx})">طباعة A4</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function approveIncomingOrder(idx) {
+      const order = ordersList[idx];
+      if (!order || !isReviewStatus(order)) return;
+      if (!isAdminUnlocked) return alert('اعتماد الطلبيات متاح فقط لصاحب المذخر.');
+      if (!activeStaffName) return alert('يرجى اختيار اسم الموظف المجهز من الأعلى أولاً.');
+      recalcInspectOrder();
+      if (!order.items || !order.items.length) return alert('لا توجد مواد في الطلب.');
+      if (!confirm(`اعتماد وتجهيز الطلبية ${order.orderNumber} بالموظف ${activeStaffName}؟`)) return;
+      try {
+        const result = await postToApi({action:'approve_order', orderNumber:order.orderNumber, staffName:activeStaffName, items:order.items, totalAmount:order.totalAmount});
+        if (result && result.order) Object.assign(order,result.order); else { order.status='معتمد للتجهيز'; order.staffName=activeStaffName; }
+        localStorage.setItem('samo_orders_v39',JSON.stringify(ordersList));
+        closeInspectModal(); renderIncomingOrders(); renderOrders(); await loadRemoteData();
+        alert('تم اعتماد الطلبية وخصم الكميات المعتمدة من المخزن.');
+      } catch(e) { alert('تعذر اعتماد الطلبية: '+e.message); }
+    }
+
     function renderOrders() {
       const container = document.getElementById('orders-list-container');
       if (!container) return;
-      if (!ordersList || ordersList.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد قوائم صادرة</div>`;
-        return;
-      }
-      container.innerHTML = ordersList.map((o, idx) => {
-        const st = String(o.status || '').trim();
-        const delivered = ['مستلم','مسلّمة','مسلمة','delivered'].includes(st.toLowerCase());
-        const ready = ['معتمد','معتمد للتجهيز','approved'].includes(st.toLowerCase());
-        const review = !delivered && !ready;
+      const outgoing = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => !isReviewStatus(x.o));
+      if (!outgoing.length) { container.innerHTML='<div style="text-align:center;padding:40px;color:var(--ios-sub);">لا توجد قوائم صادرة مجهزة أو مسلمة</div>'; return; }
+      container.innerHTML = outgoing.map(({o,idx}) => {
+        const delivered=isDeliveredStatus(o), ready=isApprovedStatus(o);
         return `<div class="prod-card">
-          <div style="display:flex; justify-content:space-between; font-weight:800;"><span>${escapeHtml(o.pharmacyName)}</span><span style="color:var(--ios-blue);">${escapeHtml(o.orderNumber)}</span></div>
-          <div style="font-size:12px; color:var(--ios-sub);">📅 ${escapeHtml(o.date)} | المجهز: <b>${escapeHtml(o.staffName || 'غير مسجل')}</b></div>
-          ${delivered ? `<div style="font-size:12px;color:var(--ios-green);margin-top:3px;">🚚 تم التسليم بواسطة: <b>${escapeHtml(o.deliveryStaffName || 'غير مسجل')}</b>${o.deliveredAt ? ` | ${escapeHtml(o.deliveredAt)}` : ''}</div>` : ''}
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; gap:6px;">
-            <span style="color:var(--ios-green); font-weight:900;">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
-            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-              <span class="badge" style="background:#e0f2fe; color:#0369a1;">${escapeHtml(st || 'قيد المراجعة')}</span>
-              <button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="openInspectModal(${idx})">${delivered ? '↩️ إرجاع مواد' : '🔎 فحص'}</button>
-              ${ready && !delivered ? `<button class="btn" style="padding:3px 8px;font-size:11px;background:var(--ios-green);" onclick="markOrderDelivered(${idx})">🚚 تم التسليم</button>` : ''}
-              <button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
-              ${isAdminUnlocked && review ? `<button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="openInspectModal(${idx})">✏️ تعديل</button>
-               <button class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>` : ''}
-            </div>
-          </div>
-        </div>`;
+          <div style="display:flex;justify-content:space-between;font-weight:800;"><span>${escapeHtml(o.pharmacyName)}</span><span style="color:var(--ios-blue);">${escapeHtml(o.orderNumber)}</span></div>
+          <div style="font-size:12px;color:var(--ios-sub);">📅 ${escapeHtml(o.date)} | المجهز: <b>${escapeHtml(o.staffName||'غير مسجل')}</b></div>
+          ${delivered?`<div style="font-size:12px;color:var(--ios-green);margin-top:3px;">🚚 المسلّم: <b>${escapeHtml(o.deliveryStaffName||'غير مسجل')}</b>${o.deliveredAt?` | ${escapeHtml(o.deliveredAt)}`:''}</div>`:''}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;gap:6px;"><span style="color:var(--ios-green);font-weight:900;">${(o.totalAmount||0).toLocaleString()} د.ع</span>
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <span class="badge" style="background:${delivered?'#e0f2fe':'#ecfdf5'};color:${delivered?'#0369a1':'#15803d'};">${delivered?'🚚 مسلّمة':'📦 مجهزة'}</span>
+            ${delivered?`<button class="btn" style="padding:3px 8px;font-size:11px;background:#fff7ed;color:#c2410c;" onclick="openInspectModal(${idx})">↩️ إرجاع مواد</button>`:`<button class="btn" style="padding:3px 8px;font-size:11px;background:var(--ios-green);" onclick="markOrderDelivered(${idx})">🚚 تم التسليم</button>`}
+            <button class="btn btn-sec" style="padding:3px 8px;font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
+          </div></div></div>`;
       }).join('');
     }
 
     async function deleteOrderRecord(idx) {
       const o = ordersList[idx];
+      if (!o || !isReviewStatus(o)) return alert('لا يمكن حذف قائمة مجهزة أو مسلّمة.');
       if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
         ordersList.splice(idx, 1);
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
@@ -1659,16 +1734,56 @@
     }
 
     function renderStaffManagementView() {
-      const container = document.getElementById('staff-report-container');
-      if (!container) return;
-      container.innerHTML = staffNamesList.map(name => {
-        const prepared = ordersList.filter(o => String(o.staffName || '').trim() === String(name).trim()).length;
-        const delivered = ordersList.filter(o => String(o.deliveryStaffName || '').trim() === String(name).trim()).length;
-        return `<div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
-          <div style="font-size: 15px; font-weight: 800;">👤 الموظف: ${escapeHtml(name)}</div>
-          <div style="font-size:12px;color:var(--ios-sub);margin-top:5px;">قوائم جهزها: <b>${prepared}</b> | قوائم سلمها: <b>${delivered}</b></div>
-        </div>`;
-      }).join('');
+      const container=document.getElementById('staff-report-container'); if(!container) return;
+      if(!staffNamesList.length){container.innerHTML='<div style="text-align:center;padding:30px;color:var(--ios-sub);">لا يوجد موظفون مسجلون</div>';} else {
+        container.innerHTML=staffNamesList.map(name=>{
+          const prepared=ordersList.filter(o=>String(o.staffName||'').trim()===String(name).trim() && (isApprovedStatus(o)||isDeliveredStatus(o))).length;
+          const delivered=ordersList.filter(o=>String(o.deliveryStaffName||'').trim()===String(name).trim() && isDeliveredStatus(o)).length;
+          return `<div class="prod-card" style="border-right:4px solid var(--ios-blue);"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><b>👤 ${escapeHtml(name)}</b><div style="display:flex;gap:5px;"><button class="btn btn-sec" style="padding:3px 8px;font-size:10px;" onclick="onStaffSelected('${escapeHtml(name)}')">اختيار</button><button class="btn btn-danger" style="padding:3px 8px;font-size:10px;" onclick="deleteStaffName('${escapeHtml(name)}')">حذف الموظف</button></div></div><div style="font-size:12px;color:var(--ios-sub);margin-top:5px;">📦 جهز: <b>${prepared}</b> | 🚚 سلم: <b>${delivered}</b></div></div>`;
+        }).join('');
+      }
+      const sel=document.getElementById('staff-report-select');
+      if(sel){ const cur=sel.value; sel.innerHTML='<option value="">اختر الموظف</option>'+staffNamesList.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join(''); if(staffNamesList.includes(cur))sel.value=cur; }
+    }
+
+    async function deleteStaffName(name){
+      if(!isAdminUnlocked)return alert('هذه العملية متاحة فقط لصاحب المذخر.');
+      if(staffNamesList.length<=1)return alert('يجب إبقاء موظف واحد على الأقل.');
+      if(!confirm(`حذف الموظف ${name} من قائمة الموظفين؟`))return;
+      try{await postToApi({action:'delete_staff',name});}catch(e){return alert('تعذر حذف الموظف من الشيت.');}
+      staffNamesList=staffNamesList.filter(n=>n!==name); localStorage.setItem('samo_staff_names_list',JSON.stringify(staffNamesList)); if(activeStaffName===name)onStaffSelected(''); populateStaffDropdown(); renderStaffManagementView();
+    }
+
+    function getStaffPeriodData(){
+      const name=(document.getElementById('staff-report-select')||{}).value||activeStaffName;
+      const from=(document.getElementById('staff-report-from')||{}).value||'';
+      const to=(document.getElementById('staff-report-to')||{}).value||'';
+      if(!name)return {name,from,to,prepared:[],delivered:[]};
+      const inRange=o=>{const raw=String(o.date||'').slice(0,10).replaceAll('/','-'); if(!from&&!to)return true; return (!from||raw>=from)&&(!to||raw<=to);};
+      const prepared=ordersList.filter(o=>String(o.staffName||'').trim()===name&&isApprovedStatus(o)||String(o.staffName||'').trim()===name&&isDeliveredStatus(o)).filter(inRange);
+      const delivered=ordersList.filter(o=>String(o.deliveryStaffName||'').trim()===name&&isDeliveredStatus(o)).filter(inRange);
+      return {name,from,to,prepared,delivered};
+    }
+    function buildStaffPeriodReport(){
+      const d=getStaffPeriodData(); if(!d.name)return alert('اختر الموظف أولاً.');
+      const pharmacies=new Set(d.prepared.map(o=>o.pharmacyName)); const deliveredPh=new Set(d.delivered.map(o=>o.pharmacyName));
+      const items=d.prepared.reduce((s,o)=>s+(o.items||[]).reduce((a,it)=>a+Number(it.quantity||0),0),0);
+      const amount=d.prepared.reduce((s,o)=>s+Number(o.totalAmount||0),0);
+      const el=document.getElementById('staff-period-report'); if(!el)return;
+      el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:7px;"><div class="badge" style="padding:10px;background:#e0f2fe;color:#0369a1;">صيدليات جهزها: <b>${pharmacies.size}</b></div><div class="badge" style="padding:10px;background:#ecfdf5;color:#15803d;">صيدليات سلمها: <b>${deliveredPh.size}</b></div><div class="badge" style="padding:10px;background:#fff7ed;color:#c2410c;">عدد الأيتمات: <b>${items}</b></div><div class="badge" style="padding:10px;background:#f3f0ff;color:#6d28d9;">المبلغ: <b>${amount.toLocaleString()} د.ع</b></div></div><div style="margin-top:10px;overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;"><tr><th style="padding:6px;border-bottom:1px solid #ddd;">الصيدلية</th><th style="padding:6px;border-bottom:1px solid #ddd;">جهز</th><th style="padding:6px;border-bottom:1px solid #ddd;">سلم</th><th style="padding:6px;border-bottom:1px solid #ddd;">الأيتمات</th><th style="padding:6px;border-bottom:1px solid #ddd;">المبلغ</th></tr>${Array.from(new Set([...d.prepared.map(o=>o.pharmacyName),...d.delivered.map(o=>o.pharmacyName)])).map(ph=>{const po=d.prepared.filter(o=>o.pharmacyName===ph),doos=d.delivered.filter(o=>o.pharmacyName===ph);const q=po.reduce((s,o)=>s+(o.items||[]).reduce((a,it)=>a+Number(it.quantity||0),0),0),a=po.reduce((s,o)=>s+Number(o.totalAmount||0),0);return `<tr><td style="padding:6px;border-bottom:1px solid #eee;">${escapeHtml(ph)}</td><td>${po.length}</td><td>${doos.length}</td><td>${q}</td><td>${a.toLocaleString()} د.ع</td></tr>`}).join('')}</table></div>`;
+    }
+    function exportSelectedStaffExcel(){
+      const d=getStaffPeriodData(); if(!d.name)return alert('اختر الموظف أولاً.'); buildStaffPeriodReport();
+      let rows=[['تقرير الموظف',d.name],['من',d.from||'كل الفترة'],['إلى',d.to||'كل الفترة'],[],['الصيدلية','رقم الطلب','الحالة','المادة','الكمية','سعر الوحدة','المبلغ','التاريخ']];
+      d.prepared.forEach(o=>(o.items||[]).forEach(it=>rows.push([o.pharmacyName,o.orderNumber,isDeliveredStatus(o)?'مسلمة':'مجهزة',it.name,it.quantity,it.price,Number(it.price||0)*Number(it.quantity||0),o.date])));
+      const html='<html><meta charset="utf-8"><table border="1">'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+escapeHtml(c)+'</td>').join('')+'</tr>').join('')+'</table></html>';
+      const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'}); const url=URL.createObjectURL(blob); const a=document.createElement('a');a.href=url;a.download=`تقرير_${d.name}_${d.from||'كل'}_${d.to||'كل'}.xls`;a.click();URL.revokeObjectURL(url);
+    }
+    function exportSelectedStaffPDF(){
+      const d=getStaffPeriodData(); if(!d.name)return alert('اختر الموظف أولاً.');
+      const totalItems=d.prepared.reduce((s,o)=>s+(o.items||[]).reduce((a,it)=>a+Number(it.quantity||0),0),0),totalAmount=d.prepared.reduce((s,o)=>s+Number(o.totalAmount||0),0);
+      const rows=d.prepared.flatMap(o=>(o.items||[]).map(it=>`<tr><td>${escapeHtml(o.pharmacyName)}</td><td>${escapeHtml(o.orderNumber)}</td><td>${escapeHtml(it.name)}</td><td>${it.quantity}</td><td>${Number(it.price||0).toLocaleString()}</td><td>${(Number(it.price||0)*Number(it.quantity||0)).toLocaleString()}</td><td>${escapeHtml(o.date)}</td></tr>`)).join('');
+      const w=window.open('','_blank'); if(!w)return alert('يرجى السماح بنافذة التقرير.'); w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير ${escapeHtml(d.name)}</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:5px;text-align:center}.summary{display:flex;gap:10px;margin:10px 0}.box{border:1px solid #ddd;padding:8px;border-radius:6px}</style></head><body><h2>تقرير الموظف: ${escapeHtml(d.name)}</h2><div>الفترة: ${d.from||'كل الفترة'} إلى ${d.to||'كل الفترة'}</div><div class="summary"><div class="box">جهز ${d.prepared.length} قائمة</div><div class="box">سلم ${d.delivered.length} قائمة</div><div class="box">الأيتمات ${totalItems}</div><div class="box">المبلغ ${totalAmount.toLocaleString()} د.ع</div></div><table><tr><th>الصيدلية</th><th>الطلب</th><th>المادة</th><th>الكمية</th><th>سعر الوحدة</th><th>المبلغ</th><th>التاريخ</th></tr>${rows}</table><script>window.onload=()=>{window.print();}<\/script></body></html>`);w.document.close();
     }
 
     function triggerAdmin() {
@@ -1694,6 +1809,7 @@
       document.getElementById('add-prod-btn').style.display = "inline-flex";
       document.getElementById('admin-header-user-picker').style.display = "flex";
       document.getElementById('tab-btn-pos').style.display = "block";
+      document.getElementById('tab-btn-incoming').style.display = "block";
       document.getElementById('tab-btn-staff').style.display = "block";
       document.getElementById('tab-btn-reports').style.display = "block";
       if (!auto) loadRemoteData();
@@ -1708,6 +1824,7 @@
       document.getElementById('add-prod-btn').style.display = "none";
       document.getElementById('admin-header-user-picker').style.display = "none";
       document.getElementById('tab-btn-pos').style.display = "none";
+      document.getElementById('tab-btn-incoming').style.display = "none";
       document.getElementById('tab-btn-staff').style.display = "none";
       document.getElementById('tab-btn-reports').style.display = "none";
       setMainTab('home');
@@ -1726,12 +1843,14 @@
     function setMainTab(t) {
       document.getElementById('view-home').style.display = t === 'home' ? 'block' : 'none';
       document.getElementById('view-pos').style.display = t === 'pos' ? 'block' : 'none';
+      document.getElementById('view-incoming').style.display = t === 'incoming' ? 'block' : 'none';
       document.getElementById('view-log').style.display = t === 'log' ? 'block' : 'none';
       document.getElementById('view-staff').style.display = t === 'staff' ? 'block' : 'none';
       document.getElementById('view-reports').style.display = t === 'reports' ? 'block' : 'none';
 
       document.getElementById('tab-btn-home').classList.toggle('active', t === 'home');
       if (document.getElementById('tab-btn-pos')) document.getElementById('tab-btn-pos').classList.toggle('active', t === 'pos');
+      document.getElementById('tab-btn-incoming').classList.toggle('active', t === 'incoming');
       document.getElementById('tab-btn-log').classList.toggle('active', t === 'log');
       if (document.getElementById('tab-btn-staff')) document.getElementById('tab-btn-staff').classList.toggle('active', t === 'staff');
       if (document.getElementById('tab-btn-reports')) document.getElementById('tab-btn-reports').classList.toggle('active', t === 'reports');
@@ -2018,16 +2137,14 @@
       if (!order) return;
       if (!isAdminUnlocked) return alert("هذه العملية متاحة فقط لصاحب المذخر.");
       if (['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(order.status || '').trim().toLowerCase())) return alert("القائمة تم تسليمها ولا يمكن تعديلها.");
-      if (!confirm("حفظ تعديلات هذه الطلبية؟")) return;
       recalcInspectOrder();
-      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-      renderOrders();
-      try {
-        await postToApi({ action: 'update_order', order: order });
-        await loadRemoteData();
-        closeInspectModal();
-        alert("تم حفظ تعديل الطلب ومزامنة المخزون والشيت.");
-      } catch (e) { alert("تم حفظ التعديل محلياً، لكن تعذر مزامنته مع الشيت."); }
+      if (isReviewStatus(order)) {
+        return approveIncomingOrder(currentInspectingOrderIndex);
+      }
+      if (!confirm("حفظ تعديلات هذه الطلبية؟")) return;
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList)); renderOrders();
+      try { await postToApi({ action: 'update_order', order: order }); await loadRemoteData(); closeInspectModal(); alert("تم حفظ تعديل الطلب ومزامنة المخزون والشيت."); }
+      catch (e) { alert("تم حفظ التعديل محلياً، لكن تعذر مزامنته مع الشيت."); }
     }
 
     async function markOrderDelivered(idx) {
@@ -2061,8 +2178,8 @@
       if (!confirm(`إرجاع ${qty} من مادة ${item.name} إلى المخزن؟`)) return;
       try {
         await postToApi({ action: 'return_order_item', orderNumber: order.orderNumber, item: { name: item.name, barcode: item.barcode || '', quantity: qty } });
-        item.quantity = Number(item.quantity || 0) - qty;
-        if (item.quantity <= 0) order.items.splice(itemIdx,1);
+        item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
+        // لا نحذف المادة من القائمة المسلمة؛ تبقى ظاهرة بكمية 0 بعد الإرجاع الكامل.
         recalcInspectOrder();
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
         renderOrders(); renderInspectOrderItems();
