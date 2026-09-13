@@ -1552,11 +1552,262 @@
             <div>
               <span class="badge" style="background:#e0f2fe; color:#0369a1;">${o.status}</span>
               <button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
+              ${isAdminUnlocked ? `<button class="btn btn-sec" style="padding:3px 8px; font-size:11px; background:#e0f2fe; color:#0369a1;" onclick="openInspectModal(${idx})">✏️ تعديل</button>` : ''}
               ${isAdminUnlocked ? `<button class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>` : ''}
             </div>
           </div>
         </div>
       `).join('');
+    }
+
+
+    // ===== إصلاحات الباركود والطباعة وتعديل سجل الصادر فقط =====
+    let currentBarcodePrintData = null;
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function openDirectBarcodeModal(name, barcode, price) {
+      if (!isAdminUnlocked) {
+        return alert("هذه الخاصية متاحة لصاحب المذخر فقط.");
+      }
+
+      currentBarcodePrintData = {
+        name: String(name || '').trim(),
+        barcode: String(barcode || '').trim(),
+        price: parseAppNumber(price)
+      };
+
+      const modal = document.getElementById('modal-direct-barcode');
+      if (!modal) return alert("نافذة الباركود غير موجودة.");
+
+      const nameEl = document.getElementById('prev-barcode-name');
+      const numEl = document.getElementById('prev-barcode-num');
+      const priceEl = document.getElementById('prev-barcode-price');
+      const codeEl = document.getElementById('prev-barcode-svg');
+
+      if (nameEl) nameEl.textContent = currentBarcodePrintData.name || 'اسم الدواء';
+      if (numEl) numEl.textContent = currentBarcodePrintData.barcode || 'بدون باركود';
+      if (priceEl) priceEl.textContent = currentBarcodePrintData.price ? currentBarcodePrintData.price.toLocaleString() + ' د.ع' : '';
+
+      if (codeEl) {
+        const code = currentBarcodePrintData.barcode || 'NO-CODE';
+        // معاينة مرئية مستقلة لا تعتمد على مكتبة خارجية.
+        codeEl.innerHTML = '<div style="font-family:monospace;font-size:18px;letter-spacing:1px;word-break:break-all;line-height:1.25;">' +
+          '▌▌▌ ' + escapeHtml(code) + ' ▐▐▐' +
+          '</div>';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeDirectBarcodeModal() {
+      const modal = document.getElementById('modal-direct-barcode');
+      if (modal) modal.style.display = 'none';
+      currentBarcodePrintData = null;
+    }
+
+    function executeDirectThermalPrint() {
+      if (!currentBarcodePrintData) return alert("لا توجد بيانات باركود للطباعة.");
+
+      const orientation = document.getElementById('print-orientation-select') ?
+        document.getElementById('print-orientation-select').value : 'landscape';
+
+      const d = currentBarcodePrintData;
+      const bars = '1011010010110110100101101001011010010110100101101001011010010110110100101101001011010010110';
+
+      const w = orientation === 'portrait' ? '38mm' : '72mm';
+      const h = orientation === 'portrait' ? '72mm' : '38mm';
+
+      const win = window.open('', '_blank', 'width=700,height=700');
+      if (!win) return alert("المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة لهذا الموقع.");
+
+      win.document.write(`<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>طباعة باركود</title>
+<style>
+@page { size: ${w} ${h}; margin: 0; }
+html,body { margin:0; padding:0; width:${w}; height:${h}; }
+body { font-family:Arial,Tahoma,sans-serif; display:flex; align-items:center; justify-content:center; }
+.label { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3mm; overflow:hidden; }
+.name { font-weight:700; font-size:11pt; max-width:90%; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.barcode { font-family:monospace; font-size:13pt; letter-spacing:1px; white-space:nowrap; }
+.number { font-family:monospace; font-size:9pt; direction:ltr; }
+.price { font-size:10pt; font-weight:700; }
+@media print { body { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
+</style>
+</head>
+<body>
+<div class="label">
+  <div class="name">${escapeHtml(d.name || 'اسم الدواء')}</div>
+  <div class="barcode">▌▌▌${bars}▐▐▐</div>
+  <div class="number">${escapeHtml(d.barcode || 'بدون باركود')}</div>
+  ${d.price ? `<div class="price">${escapeHtml(d.price.toLocaleString())} د.ع</div>` : ''}
+</div>
+<script>
+window.onload=function(){ setTimeout(function(){ window.print(); },250); };
+<\/script>
+</body>
+</html>`);
+      win.document.close();
+    }
+
+    function generateBarcodeField(inputId) {
+      if (!isAdminUnlocked) return alert("هذه الخاصية متاحة لصاحب المذخر فقط.");
+      const input = document.getElementById(inputId);
+      if (!input) return;
+
+      let code = '';
+      for (let i = 0; i < 12; i++) code += Math.floor(Math.random() * 10);
+      input.value = code;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function printBarcodeDirectFromEdit() {
+      if (!isAdminUnlocked) return alert("هذه الخاصية متاحة لصاحب المذخر فقط.");
+      const name = document.getElementById('edit-name')?.value || '';
+      const barcode = document.getElementById('edit-barcode')?.value || '';
+      const price = document.getElementById('edit-price')?.value || 0;
+      if (!barcode.trim()) return alert("أدخل الباركود أولاً.");
+      openDirectBarcodeModal(name, barcode, price);
+    }
+
+    function printBarcodeDirectFromAdd() {
+      if (!isAdminUnlocked) return alert("هذه الخاصية متاحة لصاحب المذخر فقط.");
+      const name = document.getElementById('in-name')?.value || '';
+      const barcode = document.getElementById('in-barcode')?.value || '';
+      const price = document.getElementById('in-price')?.value || 0;
+      if (!barcode.trim()) return alert("أدخل الباركود أولاً.");
+      openDirectBarcodeModal(name, barcode, price);
+    }
+
+    function openInspectModal(idx) {
+      if (!isAdminUnlocked) return alert("هذه الخاصية متاحة لصاحب المذخر فقط.");
+
+      const order = ordersList[idx];
+      if (!order) return alert("القائمة غير موجودة.");
+
+      const status = String(order.status || '').trim().toLowerCase();
+      const approvedStatuses = ['معتمد', 'مستلم', 'مكتمل', 'صادر', 'approved', 'completed', 'issued'];
+      if (approvedStatuses.includes(status)) {
+        return alert("لا يمكن تعديل قائمة تم اعتمادها أو إصدارها.");
+      }
+
+      currentInspectingOrderIndex = idx;
+      const title = document.getElementById('inspect-modal-title');
+      if (title) title.textContent = 'فحص وتعديل الطلبية ' + (order.orderNumber || '');
+
+      renderInspectOrderItems();
+
+      const modal = document.getElementById('modal-inspect-order');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeInspectModal() {
+      const modal = document.getElementById('modal-inspect-order');
+      if (modal) modal.style.display = 'none';
+      currentInspectingOrderIndex = null;
+    }
+
+    function renderInspectOrderItems() {
+      const box = document.getElementById('inspect-order-items-box');
+      if (!box || currentInspectingOrderIndex == null) return;
+
+      const order = ordersList[currentInspectingOrderIndex];
+      if (!order) return;
+
+      if (!Array.isArray(order.items)) order.items = [];
+
+      box.innerHTML = order.items.length ? order.items.map((it, i) => `
+        <div style="display:flex; gap:6px; align-items:center; border:1px solid var(--ios-border); border-radius:10px; padding:8px; margin-bottom:7px; background:#fff;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:800; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(it.name || '')}</div>
+            <div style="font-size:10px; color:var(--ios-sub);">${escapeHtml(it.barcode || '')}</div>
+          </div>
+          <input type="number" min="0" step="1" value="${Math.max(0, parseAppNumber(it.quantity))}"
+                 style="width:70px; padding:7px; border:1px solid var(--ios-border); border-radius:8px; text-align:center;"
+                 onchange="changeInspectOrderQty(${i}, this.value)">
+          <button class="btn btn-danger" style="padding:7px 9px;" onclick="removeInspectOrderItem(${i})">إلغاء</button>
+        </div>
+      `).join('') : '<div style="text-align:center;padding:20px;color:var(--ios-sub);">لا توجد مواد في القائمة</div>';
+
+      const saveBtn = document.querySelector('#modal-inspect-order button[onclick="approveAndSignOrder()"]');
+      if (saveBtn) saveBtn.textContent = 'حفظ التعديل ✓';
+    }
+
+    function changeInspectOrderQty(itemIdx, value) {
+      if (currentInspectingOrderIndex == null) return;
+      const order = ordersList[currentInspectingOrderIndex];
+      if (!order || !order.items || !order.items[itemIdx]) return;
+
+      const qty = Math.max(0, Math.floor(parseAppNumber(value)));
+      order.items[itemIdx].quantity = qty;
+
+      if (qty === 0) {
+        order.items.splice(itemIdx, 1);
+      }
+
+      order.totalAmount = order.items.reduce((sum, it) =>
+        sum + (parseAppNumber(it.price) * parseAppNumber(it.quantity)), 0);
+
+      renderInspectOrderItems();
+    }
+
+    function removeInspectOrderItem(itemIdx) {
+      if (currentInspectingOrderIndex == null) return;
+      const order = ordersList[currentInspectingOrderIndex];
+      if (!order || !order.items || !order.items[itemIdx]) return;
+
+      const name = order.items[itemIdx].name || 'هذه المادة';
+      if (!confirm('هل تريد إلغاء مادة (' + name + ') من القائمة؟')) return;
+
+      order.items.splice(itemIdx, 1);
+      order.totalAmount = order.items.reduce((sum, it) =>
+        sum + (parseAppNumber(it.price) * parseAppNumber(it.quantity)), 0);
+
+      renderInspectOrderItems();
+    }
+
+    async function approveAndSignOrder() {
+      if (!isAdminUnlocked) return alert("هذه الخاصية متاحة لصاحب المذخر فقط.");
+      if (currentInspectingOrderIndex == null) return;
+
+      const order = ordersList[currentInspectingOrderIndex];
+      if (!order) return;
+
+      const status = String(order.status || '').trim().toLowerCase();
+      const approvedStatuses = ['معتمد', 'مستلم', 'مكتمل', 'صادر', 'approved', 'completed', 'issued'];
+      if (approvedStatuses.includes(status)) {
+        return alert("لا يمكن تعديل قائمة تم اعتمادها أو إصدارها.");
+      }
+
+      if (!Array.isArray(order.items) || order.items.length === 0) {
+        return alert("لا يمكن حفظ قائمة بدون مواد.");
+      }
+
+      order.totalAmount = order.items.reduce((sum, it) =>
+        sum + (parseAppNumber(it.price) * parseAppNumber(it.quantity)), 0);
+
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+      renderOrders();
+
+      try {
+        await postToApi({ action: 'update_order', order: order });
+        await loadRemoteData();
+        closeInspectModal();
+        alert("تم حفظ التعديل وتحديث المخزون في Google Sheets بنجاح.");
+      } catch (e) {
+        closeInspectModal();
+        alert("تم حفظ التعديل محلياً، لكن تعذر تحديث Google Sheets: " + (e.message || e));
+      }
     }
 
     async function deleteOrderRecord(idx) {
