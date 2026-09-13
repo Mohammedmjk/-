@@ -1789,7 +1789,6 @@
 
     async function deleteStaffName(name){
       if(!isAdminUnlocked)return alert('هذه العملية متاحة فقط لصاحب المذخر.');
-      if(staffNamesList.length<=1)return alert('يجب إبقاء موظف واحد على الأقل.');
       if(!confirm(`حذف الموظف ${name} من قائمة الموظفين؟`))return;
       try{await postToApi({action:'delete_staff',name});}catch(e){return alert('تعذر حذف الموظف من الشيت.');}
       staffNamesList=staffNamesList.filter(n=>n!==name); localStorage.setItem('samo_staff_names_list',JSON.stringify(staffNamesList)); if(activeStaffName===name)onStaffSelected(''); populateStaffDropdown(); renderStaffManagementView();
@@ -1852,6 +1851,7 @@
       document.getElementById('tab-btn-pos').style.display = "block";
       document.getElementById('tab-btn-incoming').style.display = "block";
       document.getElementById('tab-btn-staff').style.display = "block";
+      document.getElementById('admin-add-staff-btn').style.display = "inline-flex";
       document.getElementById('tab-btn-reports').style.display = "block";
       if (!auto) loadRemoteData();
       updateReportsView();
@@ -1867,6 +1867,7 @@
       document.getElementById('tab-btn-pos').style.display = "none";
       document.getElementById('tab-btn-incoming').style.display = "none";
       document.getElementById('tab-btn-staff').style.display = "none";
+      document.getElementById('admin-add-staff-btn').style.display = "none";
       document.getElementById('tab-btn-reports').style.display = "none";
       setMainTab('home');
     }
