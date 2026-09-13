@@ -1075,6 +1075,7 @@
     let currentInspectingOrderIndex = null;
     let activeStaffName = localStorage.getItem('samo_active_staff') || '';
     let staffNamesList = JSON.parse(localStorage.getItem('samo_staff_names_list') || '["أحمد", "محمد", "علي", "سجاد"]');
+    let deletedStaffNames = JSON.parse(localStorage.getItem('samo_deleted_staff_names') || '[]');
     let targetImageInputId = null;
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -1105,6 +1106,8 @@
       const newName = prompt("أدخل اسم الموظف الجديد لإضافته للنظام:");
       if (newName && newName.trim() !== '') {
         const trimmed = newName.trim();
+        deletedStaffNames = deletedStaffNames.filter(n => n !== trimmed);
+        localStorage.setItem('samo_deleted_staff_names', JSON.stringify(deletedStaffNames));
         if (!staffNamesList.includes(trimmed)) {
           postToApi({action:'add_staff',name:trimmed}).catch(()=>{});
           staffNamesList.push(trimmed);
@@ -1321,7 +1324,14 @@
             })).filter(p => p.name);
             localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
           }
-          if (Array.isArray(data.staffNames) && data.staffNames.length) { staffNamesList = data.staffNames.map(String); localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList)); populateStaffDropdown(); }
+          if (Array.isArray(data.staffNames)) {
+            const remote = data.staffNames.map(String).map(x => x.trim()).filter(Boolean);
+            const deleted = new Set(deletedStaffNames.map(String));
+            const merged = [...staffNamesList, ...remote].filter((name, i, arr) => name && !deleted.has(name) && arr.indexOf(name) === i);
+            staffNamesList = merged;
+            localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
+            populateStaffDropdown();
+          }
           if (Array.isArray(data.orders)) {
             ordersList = data.orders;
             localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
@@ -1453,7 +1463,7 @@
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
         return `
           <div class="pos-mini-card">
-            <div class="pos-mini-card-top"><div class="pos-mini-name">${item.name}</div><button class="pos-mini-btn" onclick="modifyPosCart('${item.id}', 1)" ${item.quantity <= 0 ? 'disabled style="background:#ccc;"' : ''}>+ إضافة</button></div>
+            <div class="pos-mini-card-top"><div style="flex:1;"><div class="pos-mini-name">${item.name}</div>${item.expiryDate ? `<div style="font-size:9px;color:${checkExpiryStatus(item.expiryDate)==='expired'?'#e11d48':checkExpiryStatus(item.expiryDate)==='near'?'#d97706':'var(--ios-sub)'};font-weight:700;margin-top:3px;">📅 ${escapeHtml(formatExpiryForDisplay(item.expiryDate))}</div>` : ''}</div><button class="pos-mini-btn" onclick="modifyPosCart('${item.id}', 1)" ${item.quantity <= 0 ? 'disabled style="background:#ccc;"' : ''}>+ إضافة</button></div>
             <div class="pos-mini-bottom"><span style="color:var(--ios-green); font-weight:800;">${netPrice.toLocaleString()} د.ع</span><span>المتوفر: ${item.quantity}</span></div>
           </div>
         `;
@@ -1792,7 +1802,13 @@
       if(!isAdminUnlocked)return alert('هذه العملية متاحة فقط لصاحب المذخر.');
       if(!confirm(`حذف الموظف ${name} من قائمة الموظفين؟`))return;
       try{await postToApi({action:'delete_staff',name});}catch(e){return alert('تعذر حذف الموظف من الشيت.');}
-      staffNamesList=staffNamesList.filter(n=>n!==name); localStorage.setItem('samo_staff_names_list',JSON.stringify(staffNamesList)); if(activeStaffName===name)onStaffSelected(''); populateStaffDropdown(); renderStaffManagementView();
+      staffNamesList=staffNamesList.filter(n=>n!==name);
+      if(!deletedStaffNames.includes(name)) deletedStaffNames.push(name);
+      localStorage.setItem('samo_staff_names_list',JSON.stringify(staffNamesList));
+      localStorage.setItem('samo_deleted_staff_names',JSON.stringify(deletedStaffNames));
+      if(activeStaffName===name)onStaffSelected('');
+      populateStaffDropdown();
+      renderStaffManagementView();
     }
 
     function getStaffPeriodData(){
@@ -1853,6 +1869,7 @@
       document.getElementById('tab-btn-incoming').style.display = "block";
       document.getElementById('tab-btn-staff').style.display = "block";
       document.getElementById('admin-add-staff-btn').style.display = "inline-flex";
+      renderStaffManagementView();
       document.getElementById('tab-btn-reports').style.display = "block";
       if (!auto) loadRemoteData();
       updateReportsView();
@@ -1874,10 +1891,31 @@
     }
 
     function parseExpiryDate(value){
-      const v=String(value||'').trim(); if(!v)return null;
-      const m=v.match(/^(\d{4})[\/-](\d{1,2})(?:[\/-](\d{1,2}))?/);
-      if(!m)return null;
-      return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]||1));
+      if (value === null || value === undefined || value === '') return null;
+      if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value)) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      const v=String(value).trim();
+      if(!v) return null;
+      let m=v.match(/^(\d{4})[\/-](\d{1,2})(?:[\/-](\d{1,2}))?/);
+      if(m) return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]||1));
+      const parsed=new Date(v);
+      if(!isNaN(parsed)) return new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate());
+      return null;
+    }
+
+    function formatExpiryForDisplay(value){
+      const d=parseExpiryDate(value);
+      if(!d)return '';
+      return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+(String(value||'').match(/[\/-](\d{1,2})[\/-](\d{1,2})/) ? '/'+String(d.getDate()).padStart(2,'0') : '');
+    }
+
+    function isNearExpiry(value){
+      const d=parseExpiryDate(value);
+      if(!d)return false;
+      const now=new Date();
+      const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      if(d < today)return false;
+      const sixMonths=new Date(today.getFullYear(),today.getMonth()+6,today.getDate());
+      return d <= sixMonths;
     }
 
     function updateReportsView() {
