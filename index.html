@@ -1425,6 +1425,7 @@
         return `
           <div class="prod-card">
             <div class="prod-top"><div class="prod-info-col"><div class="prod-name">${item.name}</div>
+            <div style="font-size:11px;color:var(--ios-sub);font-weight:700;margin-top:-2px;">📅 الصلاحية: ${escapeHtml(item.expiryDate || "غير محدد")}</div>
             <div class="prod-sub-info"><span class="badge badge-form">${smartDetectForm(item.name, item.form)}</span> ${item.company ? `<span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${item.company}</span>` : ''}</div></div></div>
             <div class="prod-cart-action-area">${cartActionHtml}</div>
             <div class="prod-bottom"><span class="prod-price">${netPrice.toLocaleString()} د.ع</span><span class="prod-stock-lbl">المتوفر: ${item.quantity}</span></div>
@@ -1552,7 +1553,7 @@
         await postToApi({ action: 'new_order', order: targetOrder });
         await loadRemoteData();
       } catch(e) {}
-      alert("تم إرسال واعتماد الطلب بنجاح!");
+      alert("تم إرسال الطلب بنجاح، وهو بانتظار اعتماد صاحب المذخر.");
       setMainTab('log');
     }
 
@@ -1887,11 +1888,11 @@
       const stockWithBalance = inventory.filter(p => Number(p.quantity || 0) > 0);
       const stockValue = stockWithBalance.reduce((s,p)=>s+(Number(p.quantity||0)*Number(p.price||0)),0);
       const today = new Date();
+      const sixMonthsFromToday = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate());
       const nearValue = stockWithBalance.reduce((s,p)=>{
         const d=parseExpiryDate(p.expiryDate);
         if(!d)return s;
-        const months=(d.getFullYear()-today.getFullYear())*12+(d.getMonth()-today.getMonth());
-        return s+(months>=0 && months<=6 ? Number(p.quantity||0)*Number(p.price||0) : 0);
+        return s+(d >= today && d <= sixMonthsFromToday ? Number(p.quantity||0)*Number(p.price||0) : 0);
       },0);
       const expiredValue = stockWithBalance.reduce((s,p)=>{
         const d=parseExpiryDate(p.expiryDate);
