@@ -824,7 +824,7 @@
       </div>
       <div id="inspect-order-items-box" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;"></div>
       <div style="display: flex; gap: 8px;">
-        <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" onclick="approveAndSignOrder()">اعتماد الطلبية وتثبيت المجهز ✓</button>
+        <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" id="inspect-save-btn" onclick="approveAndSignOrder()">حفظ التعديلات ✓</button>
         <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إلغاء</button>
       </div>
     </div>
@@ -1345,7 +1345,7 @@
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
         let cartActionHtml = isOutOfStock ? `<span class="badge badge-out">نافد من المخزن</span>` :
           (inCart === 0 ? `<button class="btn-add-cart-wide" onclick="modifyCartQty('${item.id}', 1)">+ إضافة للسلة</button>` :
-          `<div class="counter-control-wide" style="display:flex;align-items:center;gap:4px;"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><input type="number" min="1" max="${item.quantity}" value="${inCart}" onchange="setDirectCartQty('${item.id}', this.value)" style="width:58px;text-align:center;border:1px solid var(--ios-border);border-radius:7px;padding:5px;background:#fff;"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button><button type="button" class="btn btn-danger" style="padding:4px 7px;font-size:11px;" onclick="removeCartItem('${item.id}')">حذف</button></div>`);
+          `<div class="counter-control-wide"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><span class="counter-val-wide" onclick="promptDirectCartQty('${item.id}')">${inCart}</span><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button></div>`);
 
         let adminTools = isAdminUnlocked ? `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; border-top:0.5px dashed var(--ios-border); padding-top:6px;">
@@ -1405,6 +1405,21 @@
       renderPosCartSummary();
     }
 
+    function setPosCartQty(prodId, value) {
+      const prod = inventory.find(i => i.id === prodId);
+      if (!prod) return;
+      let qty = Math.floor(Number(value));
+      if (!Number.isFinite(qty) || qty < 1) { delete posCartMap[prodId]; }
+      else if (qty <= Number(prod.quantity || 0)) { posCartMap[prodId] = qty; }
+      else { alert("الكمية المطلوبة تتجاوز المتوفر!"); }
+      renderPosCartSummary();
+    }
+
+    function removePosCartItem(prodId) {
+      delete posCartMap[prodId];
+      renderPosCartSummary();
+    }
+
     function renderPosCartSummary() {
       const container = document.getElementById('pos-cart-summary');
       if (!container) return;
@@ -1421,7 +1436,16 @@
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
         const sub = netPrice * qty;
         total += sub;
-        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:0.5px solid #eee; font-size:12px;"><span><b>${item.name}</b> (×${qty})</span><span>${sub.toLocaleString()} د.ع</span></div>`;
+        return `<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:0.5px solid #eee; font-size:12px;">
+          <div style="flex:1;"><b>${item.name}</b><div style="font-size:10px;color:var(--ios-sub);">${netPrice.toLocaleString()} د.ع × ${qty}</div></div>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <button type="button" class="btn btn-sec" style="padding:3px 7px;" onclick="modifyPosCart('${id}',-1)">−</button>
+            <input type="number" min="1" max="${item.quantity}" value="${qty}" style="width:48px;text-align:center;padding:4px;border:1px solid var(--ios-border);border-radius:7px;" onchange="setPosCartQty('${id}',this.value)">
+            <button type="button" class="btn btn-sec" style="padding:3px 7px;" onclick="modifyPosCart('${id}',1)">+</button>
+            <button type="button" class="btn btn-danger" style="padding:3px 7px;" onclick="removePosCartItem('${id}')">حذف</button>
+          </div>
+          <span style="min-width:78px;text-align:left;">${sub.toLocaleString()} د.ع</span>
+        </div>`;
       }).join('');
       document.getElementById('pos-total-price').innerText = total.toLocaleString() + ' د.ع';
     }
@@ -1474,23 +1498,6 @@
       if (next <= 0) delete cartMap[prodId];
       else if (next <= prod.quantity) cartMap[prodId] = next;
       renderProducts();
-    }
-
-    function setDirectCartQty(prodId, value) {
-      const item = inventory.find(i => i.id === prodId);
-      if (!item) return;
-      let qty = Math.floor(Number(value));
-      if (!Number.isFinite(qty) || qty < 1) { delete cartMap[prodId]; }
-      else if (qty <= item.quantity) { cartMap[prodId] = qty; }
-      else { alert("الكمية المطلوبة تتجاوز المتوفر!"); return; }
-      renderProducts();
-      updateBadgeDot();
-    }
-
-    function removeCartItem(prodId) {
-      delete cartMap[prodId];
-      renderProducts();
-      updateBadgeDot();
     }
 
     function updateBadgeDot() {
@@ -1613,21 +1620,28 @@
         container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد قوائم صادرة</div>`;
         return;
       }
-      container.innerHTML = ordersList.map((o, idx) => `
-        <div class="prod-card">
-          <div style="display:flex; justify-content:space-between; font-weight:800;"><span>${o.pharmacyName}</span><span style="color:var(--ios-blue);">${o.orderNumber}</span></div>
-          <div style="font-size:12px; color:var(--ios-sub);">📅 ${o.date} | المجهز: <b>${o.staffName || 'غير مسجل'}</b></div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+      container.innerHTML = ordersList.map((o, idx) => {
+        const st = String(o.status || '').trim();
+        const delivered = ['مستلم','مسلّمة','مسلمة','delivered'].includes(st.toLowerCase());
+        const ready = ['معتمد','معتمد للتجهيز','approved'].includes(st.toLowerCase());
+        const review = !delivered && !ready;
+        return `<div class="prod-card">
+          <div style="display:flex; justify-content:space-between; font-weight:800;"><span>${escapeHtml(o.pharmacyName)}</span><span style="color:var(--ios-blue);">${escapeHtml(o.orderNumber)}</span></div>
+          <div style="font-size:12px; color:var(--ios-sub);">📅 ${escapeHtml(o.date)} | المجهز: <b>${escapeHtml(o.staffName || 'غير مسجل')}</b></div>
+          ${delivered ? `<div style="font-size:12px;color:var(--ios-green);margin-top:3px;">🚚 تم التسليم بواسطة: <b>${escapeHtml(o.deliveryStaffName || 'غير مسجل')}</b>${o.deliveredAt ? ` | ${escapeHtml(o.deliveredAt)}` : ''}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; gap:6px;">
             <span style="color:var(--ios-green); font-weight:900;">${(o.totalAmount || 0).toLocaleString()} د.ع</span>
-            <div>
-              <span class="badge" style="background:#e0f2fe; color:#0369a1;">${o.status}</span>
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+              <span class="badge" style="background:#e0f2fe; color:#0369a1;">${escapeHtml(st || 'قيد المراجعة')}</span>
+              <button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="openInspectModal(${idx})">${delivered ? '↩️ إرجاع مواد' : '🔎 فحص'}</button>
+              ${ready && !delivered ? `<button class="btn" style="padding:3px 8px;font-size:11px;background:var(--ios-green);" onclick="markOrderDelivered(${idx})">🚚 تم التسليم</button>` : ''}
               <button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
-              ${isAdminUnlocked ? `<button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="openInspectModal(${idx})">✏️ تعديل</button>
+              ${isAdminUnlocked && review ? `<button class="btn btn-sec" style="padding:3px 8px; font-size:11px;" onclick="openInspectModal(${idx})">✏️ تعديل</button>
                <button class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="deleteOrderRecord(${idx})">حذف</button>` : ''}
             </div>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
 
     async function deleteOrderRecord(idx) {
@@ -1647,11 +1661,14 @@
     function renderStaffManagementView() {
       const container = document.getElementById('staff-report-container');
       if (!container) return;
-      container.innerHTML = staffNamesList.map(name => `
-        <div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
-          <div style="font-size: 15px; font-weight: 800;">👤 الموظف: ${name}</div>
-        </div>
-      `).join('');
+      container.innerHTML = staffNamesList.map(name => {
+        const prepared = ordersList.filter(o => String(o.staffName || '').trim() === String(name).trim()).length;
+        const delivered = ordersList.filter(o => String(o.deliveryStaffName || '').trim() === String(name).trim()).length;
+        return `<div class="prod-card" style="border-right: 4px solid var(--ios-blue);">
+          <div style="font-size: 15px; font-weight: 800;">👤 الموظف: ${escapeHtml(name)}</div>
+          <div style="font-size:12px;color:var(--ios-sub);margin-top:5px;">قوائم جهزها: <b>${prepared}</b> | قوائم سلمها: <b>${delivered}</b></div>
+        </div>`;
+      }).join('');
     }
 
     function triggerAdmin() {
@@ -1909,15 +1926,17 @@
     }
 
     function openInspectModal(idx) {
-      if (!isAdminUnlocked) return alert("تعديل الطلبات متاح فقط لصاحب المذخر.");
       const order = ordersList[idx];
       if (!order) return;
-      if (['معتمد','مستلم','مكتمل','صادر','approved','completed','issued'].includes(String(order.status || '').trim().toLowerCase())) {
-        return alert("لا يمكن تعديل طلب تم اعتماده أو إصداره.");
-      }
+      const st = String(order.status || '').trim().toLowerCase();
+      const delivered = ['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(st);
+      if (!delivered && !isAdminUnlocked) return alert("فحص الطلبات وتعديلها متاح فقط لصاحب المذخر.");
+      if (!delivered && ['معتمد','معتمد للتجهيز','approved'].includes(st)) return alert("القائمة معتمدة للتجهيز ولا يمكن تعديلها بعد الاعتماد.");
       currentInspectingOrderIndex = idx;
-      document.getElementById('inspect-modal-title').innerText = 'تعديل الطلبية ' + order.orderNumber;
+      document.getElementById('inspect-modal-title').innerText = delivered ? 'إرجاع مواد من الطلبية ' + order.orderNumber : 'فحص وتعديل الطلبية ' + order.orderNumber;
       renderInspectOrderItems();
+      const saveBtn = document.getElementById('inspect-save-btn');
+      if (saveBtn) saveBtn.style.display = delivered ? 'none' : 'inline-flex';
       document.getElementById('modal-inspect-order').style.display = 'flex';
     }
 
@@ -1931,7 +1950,14 @@
       const box = document.getElementById('inspect-order-items-box');
       const order = ordersList[currentInspectingOrderIndex];
       if (!box || !order) return;
-      box.innerHTML = (order.items || []).map((it, i) => `
+      const st = String(order.status || '').trim().toLowerCase();
+      const delivered = ['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(st);
+      box.innerHTML = (order.items || []).map((it, i) => delivered ? `
+        <div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid #eee;">
+          <div style="flex:1;font-size:13px;"><b>${escapeHtml(it.name)}</b><div style="font-size:10px;color:var(--ios-sub);">الكمية المسلمة: ${Number(it.quantity || 0)}</div></div>
+          <input type="number" min="1" max="${Number(it.quantity || 0)}" value="${Number(it.quantity || 0)}" id="return-qty-${i}" style="width:58px;text-align:center;padding:5px;border:1px solid var(--ios-border);border-radius:7px;">
+          <button class="btn btn-sec" style="padding:4px 8px;background:#fff7ed;color:#c2410c;" onclick="returnOrderItem(${i})">↩️ إرجاع</button>
+        </div>` : `
         <div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid #eee;">
           <div style="flex:1;font-size:13px;"><b>${escapeHtml(it.name)}</b><div style="font-size:10px;color:var(--ios-sub);">${Number(it.price || 0).toLocaleString()} د.ع</div></div>
           <button class="btn btn-sec" style="padding:4px 8px;" onclick="changeInspectQty(${i},-1)">−</button>
@@ -1945,6 +1971,7 @@
     function changeInspectQty(itemIdx, delta) {
       const order = ordersList[currentInspectingOrderIndex];
       if (!order || !order.items[itemIdx]) return;
+      if (['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(order.status || '').trim().toLowerCase())) return;
       const item = order.items[itemIdx];
       const product = inventory.find(p => (item.barcode && p.barcode === item.barcode) || p.name.trim().toLowerCase() === String(item.name).trim().toLowerCase());
       const max = product ? Number(product.quantity || 0) + Number(item.quantity || 0) : Infinity;
@@ -1959,6 +1986,7 @@
     function setInspectQty(itemIdx, value) {
       const order = ordersList[currentInspectingOrderIndex];
       if (!order || !order.items[itemIdx]) return;
+      if (['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(order.status || '').trim().toLowerCase())) return;
       const item = order.items[itemIdx];
       const product = inventory.find(p => (item.barcode && p.barcode === item.barcode) || p.name.trim().toLowerCase() === String(item.name).trim().toLowerCase());
       const max = product ? Number(product.quantity || 0) + Number(item.quantity || 0) : Infinity;
@@ -1972,7 +2000,7 @@
 
     function removeInspectOrderItem(itemIdx) {
       const order = ordersList[currentInspectingOrderIndex];
-      if (!order) return;
+      if (!order || ['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(order.status || '').trim().toLowerCase())) return;
       order.items.splice(itemIdx, 1);
       recalcInspectOrder();
       renderInspectOrderItems();
@@ -1988,21 +2016,59 @@
       if (currentInspectingOrderIndex === null) return;
       const order = ordersList[currentInspectingOrderIndex];
       if (!order) return;
+      if (!isAdminUnlocked) return alert("هذه العملية متاحة فقط لصاحب المذخر.");
+      if (['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(order.status || '').trim().toLowerCase())) return alert("القائمة تم تسليمها ولا يمكن تعديلها.");
       if (!confirm("حفظ تعديلات هذه الطلبية؟")) return;
-
       recalcInspectOrder();
       localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
       renderOrders();
-      renderInspectOrderItems();
-
       try {
         await postToApi({ action: 'update_order', order: order });
         await loadRemoteData();
         closeInspectModal();
         alert("تم حفظ تعديل الطلب ومزامنة المخزون والشيت.");
-      } catch (e) {
-        alert("تم حفظ التعديل محلياً، لكن تعذر مزامنته مع الشيت.");
-      }
+      } catch (e) { alert("تم حفظ التعديل محلياً، لكن تعذر مزامنته مع الشيت."); }
+    }
+
+    async function markOrderDelivered(idx) {
+      const order = ordersList[idx];
+      if (!order) return;
+      const st = String(order.status || '').trim().toLowerCase();
+      if (!['معتمد','معتمد للتجهيز','approved'].includes(st)) return alert("زر التسليم يظهر للقوائم المعتمدة فقط.");
+      if (!activeStaffName) return alert("يرجى اختيار اسم الموظف الذي قام بالتسليم أولاً.");
+      if (!confirm(`تأكيد تسليم الطلبية ${order.orderNumber} بواسطة الموظف ${activeStaffName}؟`)) return;
+      order.status = 'مستلم';
+      order.deliveryStaffName = activeStaffName;
+      order.deliveredAt = new Date().toLocaleString('ar-IQ');
+      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+      renderOrders();
+      try {
+        await postToApi({ action: 'deliver_order', orderNumber: order.orderNumber, deliveryStaffName: order.deliveryStaffName, deliveredAt: order.deliveredAt });
+        await loadRemoteData();
+        alert("تم تسجيل التسليم وحفظ اسم الموظف في الشيت.");
+      } catch(e) { alert("تم تسجيل التسليم محلياً، لكن تعذر مزامنته مع الشيت."); }
+    }
+
+    async function returnOrderItem(itemIdx) {
+      const order = ordersList[currentInspectingOrderIndex];
+      if (!order || !order.items[itemIdx]) return;
+      const st = String(order.status || '').trim().toLowerCase();
+      if (!['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(st)) return;
+      const item = order.items[itemIdx];
+      const input = document.getElementById('return-qty-' + itemIdx);
+      let qty = Math.floor(Number(input ? input.value : item.quantity));
+      if (!Number.isFinite(qty) || qty < 1 || qty > Number(item.quantity || 0)) return alert("كمية الإرجاع غير صحيحة.");
+      if (!confirm(`إرجاع ${qty} من مادة ${item.name} إلى المخزن؟`)) return;
+      try {
+        await postToApi({ action: 'return_order_item', orderNumber: order.orderNumber, item: { name: item.name, barcode: item.barcode || '', quantity: qty } });
+        item.quantity = Number(item.quantity || 0) - qty;
+        if (item.quantity <= 0) order.items.splice(itemIdx,1);
+        recalcInspectOrder();
+        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        renderOrders(); renderInspectOrderItems();
+        await loadRemoteData();
+        alert("تم إرجاع المادة إلى المخزن وتحديث الشيت.");
+      } catch(e) { alert("تعذر تنفيذ الإرجاع ومزامنته مع الشيت."); }
     }
 
     function exportInventoryCSV() { downloadCSV("Name,Company,Quantity,Price\n" + inventory.map(i=>`"${i.name}","${i.company}",${i.quantity},${i.price}`).join("\n"), "inventory.csv"); }
