@@ -1776,6 +1776,7 @@
           <div style="font-size:11px;color:var(--ios-sub);margin-top:3px;">📅 ${escapeHtml(o.date)} | المواد: ${(o.items||[]).length} | المبلغ المطلوب: ${(o.totalAmount||0).toLocaleString()} د.ع</div>
           <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
             <button class="btn" style="background:var(--ios-green);" onclick="openInspectModal(${idx})">🔎 فحص وتعديل</button>
+            <button class="btn btn-danger" onclick="deleteOrderRecord(${idx})">🗑️ حذف الطلبية</button>
             <button class="btn btn-sec" onclick="printInvoiceA4(${idx})">طباعة A4</button>
           </div>
         </div>`).join('');
@@ -1820,16 +1821,19 @@
 
     async function deleteOrderRecord(idx) {
       const o = ordersList[idx];
+      // الحذف مسموح فقط للطلبيات الواردة قبل الاعتماد والتجهيز.
+      // لا يتم تعديل inventory هنا، لذلك لا يتم خصم أي كمية من المخزن.
       if (!o || !isReviewStatus(o)) return alert('لا يمكن حذف قائمة مجهزة أو مسلّمة.');
-      if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
+      if (confirm(`هل أنت متأكد من حذف الطلبية الواردة رقم (${o.orderNumber})؟\n\nهذه العملية تحذف الطلبية فقط ولا تخصم أي كمية من المخزن.`)) {
         ordersList.splice(idx, 1);
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        renderIncomingOrders();
         renderOrders();
         try {
           await postToApi({ action: 'delete_order', orderNumber: o.orderNumber });
           await loadRemoteData();
         } catch(e) {}
-        alert("تم الحذف بنجاح!");
+        alert("تم حذف الطلبية الواردة بنجاح، ولم يتم خصم أي كمية من المخزن.");
       }
     }
 
