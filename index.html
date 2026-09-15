@@ -170,6 +170,23 @@
       color: var(--ios-blue);
     }
 
+    .ai-image-search-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffffff;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
     .icon-action-circle {
       width: 44px;
       height: 44px;
@@ -558,6 +575,7 @@
               <circle cx="12" cy="13" r="4"></circle>
             </svg>
           </button>
+          <button type="button" class="ai-image-search-btn" onclick="openAiMedicineCamera('search')" title="تصوير الدواء والبحث عنه بالذكاء الاصطناعي">📷✨</button>
         </div>
 
         <div class="icon-action-circle" id="toggle-out-stock-circle" onclick="toggleHideOutStock()" title="إخفاء/إظهار الأدوية النافذة">
@@ -974,13 +992,14 @@
         <label>صورة المنتج (رابط أو التقاط بالكاميرا):</label>
         <div style="display: flex; gap: 6px;">
           <input type="text" id="in-image" placeholder="https://... أو التقاط">
-          <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1; white-space:nowrap;" onclick="openCameraForImage('in-image')">📷 التقاط</button>
+          <button type="button" class="btn btn-sec" style="background:#e0f2fe; color:#0369a1; white-space:nowrap;" onclick="openAiMedicineCamera('add')">📷✨ قراءة بالذكاء الاصطناعي</button>
         </div>
       </div>
       <div class="form-row">
         <label>الشركة / المنشأ:</label>
         <input type="text" id="in-company" placeholder="اسم الشركة المصنعة...">
       </div>
+      <div id="ai-medicine-extra-info" style="display:none; margin:-2px 0 8px; padding:8px 10px; border:1px solid #bfdbfe; background:#eff6ff; border-radius:9px; font-size:11px; line-height:1.7; color:#1e3a8a;"></div>
       <div class="form-row">
         <label>التصنيف / الشكل الدوائي:</label>
         <select id="in-form">
@@ -1233,6 +1252,133 @@
           };
           reader.readAsDataURL(file);
         }
+      };
+      fileInput.click();
+    }
+
+    function normalizeAiDosageForm(value) {
+      const v = String(value || '').trim().toLowerCase();
+      const map = {
+        'tablet':'Tablet','tablets':'Tablet','حبوب':'Tablet','قرص':'Tablet','اقراص':'Tablet',
+        'capsule':'Capsule','capsules':'Capsule','كبسول':'Capsule','كبسولة':'Capsule','كبسولات':'Capsule',
+        'syrup':'Syrup','شراب':'Syrup',
+        'suspension':'Suspension','susp':'Suspension','معلق':'Suspension','معلّق':'Suspension',
+        'injection':'Injection','injectable':'Injection','حقن':'Injection',
+        'vial':'Vial','فيال':'Vial',
+        'ampoule':'Ampoule','amp':'Ampoule','أمبول':'Ampoule','امبول':'Ampoule',
+        'cream':'Cream','كريم':'Cream',
+        'ointment':'Ointment','مرهم':'Ointment',
+        'gel':'Gel','جل':'Gel',
+        'drops':'Drops','drop':'Drops','قطرات':'Drops','قطرة':'Drops'
+      };
+      return map[v] || '';
+    }
+
+    function showAiMedicineLoading(show, text) {
+      let el = document.getElementById('ai-medicine-loading');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'ai-medicine-loading';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        el.innerHTML = '<div style="background:#fff;border-radius:16px;padding:20px 24px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.2);font-weight:700;min-width:220px;"><div style="font-size:30px;margin-bottom:8px;">🤖📷</div><div id="ai-medicine-loading-text">جاري قراءة الدواء...</div></div>';
+        document.body.appendChild(el);
+      }
+      const t = document.getElementById('ai-medicine-loading-text');
+      if (t) t.textContent = text || 'جاري قراءة الدواء من الصورة...';
+      el.style.display = show ? 'flex' : 'none';
+    }
+
+    function compressMedicineImage(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) return reject(new Error('لم يتم اختيار صورة'));
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('تعذر قراءة الصورة'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const maxSide = 1400;
+            const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+            canvas.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+            resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+          };
+          img.onerror = () => reject(new Error('تعذر فتح الصورة'));
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function analyzeMedicineImageFile(file, mode) {
+      try {
+        showAiMedicineLoading(true, mode === 'search' ? 'جاري التعرف على الدواء والبحث عنه...' : 'جاري قراءة بيانات الدواء من الصورة...');
+        const image = await compressMedicineImage(file);
+        const result = await postToApi({
+          action: 'gemini_analyze_medicine_image',
+          imageBase64: image.base64,
+          mimeType: image.mimeType,
+          mode: mode
+        });
+        const m = result.medicine || {};
+        const name = String(m.name || '').trim();
+        const barcode = String(m.barcode || '').trim();
+        if (!name && !barcode) throw new Error('لم أستطع قراءة اسم الدواء أو الباركود بوضوح. جرّب صورة أوضح وأقرب.');
+
+        if (mode === 'search') {
+          const searchValue = barcode || name;
+          const input = document.getElementById('search-box');
+          if (input) {
+            input.value = searchValue;
+            renderProducts();
+            const exact = (inventory || []).some(p =>
+              (barcode && String(p.barcode || '').trim() === barcode) ||
+              (name && String(p.name || '').trim().toLowerCase() === name.toLowerCase())
+            );
+            if (!exact) alert('تم التعرف على: ' + (name || barcode) + '\nلكن لم أجد مادة مطابقة تماماً في المخزن.');
+          }
+        } else {
+          const nameEl = document.getElementById('in-name');
+          const companyEl = document.getElementById('in-company');
+          const barcodeEl = document.getElementById('in-barcode');
+          const formEl = document.getElementById('in-form');
+          if (nameEl && name) nameEl.value = name;
+          if (companyEl && m.company) companyEl.value = String(m.company).trim();
+          if (barcodeEl && barcode) barcodeEl.value = barcode;
+          const normalizedForm = normalizeAiDosageForm(m.dosage_form);
+          if (formEl && normalizedForm) formEl.value = normalizedForm;
+
+          const extra = document.getElementById('ai-medicine-extra-info');
+          if (extra) {
+            const parts = [];
+            if (m.active_ingredient) parts.push('<b>المادة الفعالة:</b> ' + escapeHtml(m.active_ingredient));
+            if (m.strength) parts.push('<b>التركيز:</b> ' + escapeHtml(m.strength));
+            if (m.pack_size) parts.push('<b>حجم العبوة:</b> ' + escapeHtml(m.pack_size));
+            if (m.confidence !== undefined && m.confidence !== '') parts.push('<b>الثقة:</b> ' + Math.round(Number(m.confidence) * 100) + '%');
+            if (m.notes) parts.push('<b>ملاحظة:</b> ' + escapeHtml(m.notes));
+            extra.innerHTML = parts.length ? '🤖 <b>معلومات قرأها Gemini — راجعها قبل الحفظ:</b><br>' + parts.join(' &nbsp; | &nbsp; ') : '';
+            extra.style.display = parts.length ? 'block' : 'none';
+          }
+          alert('تمت قراءة بيانات الدواء وملء الحقول. راجعها ثم اضغط حفظ إذا كانت صحيحة.');
+        }
+      } catch (e) {
+        alert('تعذر تحليل صورة الدواء:\n' + (e.message || e));
+      } finally {
+        showAiMedicineLoading(false);
+      }
+    }
+
+    function openAiMedicineCamera(mode) {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.capture = 'environment';
+      fileInput.onchange = function(e) {
+        const file = e.target.files && e.target.files[0];
+        if (file) analyzeMedicineImageFile(file, mode || 'search');
       };
       fileInput.click();
     }
@@ -2038,7 +2184,7 @@
       if (t === 'log') { renderOrders(); }
     }
 
-    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; }
+    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
     function closeAddModal() { document.getElementById('modal-add-item').style.display = 'none'; }
     function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
     function closeCameraScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
