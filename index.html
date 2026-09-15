@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="سامو للأدوية">
   
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <style>
     :root {
       --ios-bg: #f2f2f7;
@@ -791,32 +792,65 @@
   </div>
 
   <div id="modal-direct-barcode" class="modal-overlay">
-    <div class="modal-sheet" style="max-width: 420px; text-align: center;">
+    <div class="modal-sheet" style="max-width: 560px; text-align: center;">
       <div class="sheet-head">
-        <div class="sheet-title">طباعة ملصق الباركود الحراري</div>
+        <div class="sheet-title">🖨️ طباعة باركود الدواء</div>
         <button class="btn btn-sec" onclick="closeDirectBarcodeModal()">إغلاق</button>
       </div>
-      
-      <div style="background: #f2f2f7; padding: 10px; border-radius: 12px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 12px; font-weight: 700; color: #3a3a3c;">اتجاه طباعة الملصق:</span>
-        <select id="print-orientation-select" style="background: #fff; border: 1px solid var(--ios-border); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; outline: none;">
-          <option value="landscape">أفقي (Landscape - 72×38 مم)</option>
-          <option value="portrait">عمودي (Portrait - 38×72 مم)</option>
-        </select>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div class="form-row" style="margin:0;">
+          <label>مقاس الملصق:</label>
+          <select id="print-size-select" onchange="onPrintSettingChanged()">
+            <option value="40x25">40 × 25 مم</option>
+            <option value="50x30" selected>50 × 30 مم</option>
+            <option value="60x40">60 × 40 مم</option>
+            <option value="70x40">70 × 40 مم</option>
+            <option value="76x50">76 × 50 مم</option>
+            <option value="custom">مقاس مخصص...</option>
+          </select>
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>عدد النسخ:</label>
+          <input id="print-copies-input" type="number" min="1" max="9999" value="1" onchange="onPrintSettingChanged()">
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>العرض (مم):</label>
+          <input id="print-width-input" type="number" min="20" max="76" step="1" value="50" onchange="onCustomPrintSizeChanged()">
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>الارتفاع (مم):</label>
+          <input id="print-height-input" type="number" min="10" max="200" step="1" value="30" onchange="onCustomPrintSizeChanged()">
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>الاتجاه:</label>
+          <select id="print-orientation-select" onchange="onPrintSettingChanged()">
+            <option value="landscape">أفقي</option>
+            <option value="portrait">عمودي</option>
+          </select>
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>طابعة Windows:</label>
+          <select id="print-printer-select" onchange="onPrintSettingChanged()">
+            <option value="">جاري البحث عن الطابعات...</option>
+          </select>
+        </div>
       </div>
 
-      <div class="barcode-preview-box">
-        <div id="prev-barcode-name" style="font-size: 11px; font-weight: bold; max-width: 65mm; overflow: hidden; white-space: nowrap;">اسم الدواء</div>
-        <div id="prev-barcode-svg" style="margin: 4px 0;"></div>
-        <div id="prev-barcode-num" style="font-family: monospace; font-size: 11px; font-weight: bold;">000000000</div>
-        <div id="prev-barcode-price" style="font-size: 10px; font-weight: bold;">0 د.ع</div>
+      <div id="print-bridge-status" style="font-size:12px;padding:8px;border-radius:8px;background:#f2f2f7;margin-bottom:10px;">جاري فحص جسر الطباعة...</div>
+
+      <div class="barcode-preview-box" style="min-height:130px;">
+        <div id="prev-barcode-name" style="font-size:12px;font-weight:bold;max-width:95%;overflow:hidden;white-space:nowrap;">اسم الدواء</div>
+        <svg id="prev-barcode-svg" style="max-width:95%;height:auto;"></svg>
+        <div id="prev-barcode-num" style="font-family:monospace;font-size:11px;font-weight:bold;">000000000</div>
+        <div id="prev-barcode-price" style="font-size:10px;font-weight:bold;">0 د.ع</div>
       </div>
 
-      <div style="display: flex; gap: 8px;">
-        <button class="btn" style="flex: 1; justify-content: center; padding: 14px; font-size: 15px; background: var(--ios-blue); box-shadow: 0 4px 12px rgba(0,122,255,0.3);" onclick="executeDirectThermalPrint()">
-          🖨️ طباعة الملصق الآن (صفحة 1)
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1;justify-content:center;padding:14px;font-size:15px;background:var(--ios-blue);box-shadow:0 4px 12px rgba(0,122,255,0.3);" onclick="executeDirectThermalPrint()">
+          🖨️ طباعة مباشرة
         </button>
-        <button class="btn btn-sec" style="padding: 14px; font-size: 14px;" onclick="closeDirectBarcodeModal()">إغلاق</button>
+        <button class="btn btn-sec" style="padding:14px;font-size:14px;" onclick="printBarcodeBrowserFallback()">🖨️ طباعة Windows</button>
       </div>
     </div>
   </div>
@@ -1065,49 +1099,6 @@
     let savedPharmacies = [];
     let cartMap = {};
     let posCartMap = {};
-    const CART_STORAGE_PREFIX = 'samo_user_cart_v1_';
-    const CART_USER_ID_KEY = 'samo_cart_user_id_v1';
-
-    function getCartUserId() {
-      let id = localStorage.getItem(CART_USER_ID_KEY);
-      if (!id) {
-        id = (window.crypto && crypto.randomUUID)
-          ? crypto.randomUUID()
-          : 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-        localStorage.setItem(CART_USER_ID_KEY, id);
-      }
-      return id;
-    }
-
-    function getCartStorageKey() {
-      return CART_STORAGE_PREFIX + getCartUserId();
-    }
-
-    function saveUserCart() {
-      try {
-        localStorage.setItem(getCartStorageKey(), JSON.stringify(cartMap));
-      } catch (e) {}
-    }
-
-    function loadUserCart() {
-      try {
-        const saved = localStorage.getItem(getCartStorageKey());
-        if (!saved) {
-          cartMap = {};
-          return;
-        }
-        const parsed = JSON.parse(saved);
-        cartMap = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
-      } catch (e) {
-        cartMap = {};
-      }
-    }
-
-    function clearUserCart() {
-      cartMap = {};
-      try { localStorage.removeItem(getCartStorageKey()); } catch (e) {}
-    }
-
     let currentFilter = 'all';
     let hideOutStock = false;
     let posHideOutStock = false;
@@ -1315,8 +1306,7 @@
       if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
       const localOrders = localStorage.getItem('samo_orders_v39');
       if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
-
-      loadUserCart();
+      loadPrintSettings();
 
       populateCompanyDropdown();
       populateReportCompanyDropdown();
@@ -1671,7 +1661,6 @@
         if (qty > 0) cartMap[prodId] = qty;
         else delete cartMap[prodId];
       }
-      saveUserCart();
       renderProducts();
     }
 
@@ -1682,7 +1671,6 @@
       const next = cur + delta;
       if (next <= 0) delete cartMap[prodId];
       else if (next <= prod.quantity) cartMap[prodId] = next;
-      saveUserCart();
       renderProducts();
     }
 
@@ -1747,14 +1735,12 @@
       } else {
         alert("الكمية المطلوبة تتجاوز المتوفر!");
       }
-      saveUserCart();
       renderProducts();
       refreshCheckoutModal();
     }
 
     function removeCheckoutItem(prodId) {
       delete cartMap[prodId];
-      saveUserCart();
       renderProducts();
       if (Object.keys(cartMap).length === 0) {
         closeSendModal();
@@ -1788,7 +1774,7 @@
       };
 
       ordersList.unshift(order);
-      clearUserCart();
+      cartMap = {};
       closeSendModal();
       renderProducts();
       renderOrders();
@@ -2176,21 +2162,127 @@
 
     let currentBarcodePrintData = null;
 
+    const PRINT_BRIDGE_URL = 'http://127.0.0.1:8765';
+    const PRINT_SETTINGS_KEY = 'samo_print_settings_v1';
+    const DEFAULT_PRINT_SETTINGS = {
+      width: 50, height: 30, copies: 1, orientation: 'landscape', printer: ''
+    };
+
+    function getPrintSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(PRINT_SETTINGS_KEY) || '{}');
+        return { ...DEFAULT_PRINT_SETTINGS, ...saved };
+      } catch (e) { return { ...DEFAULT_PRINT_SETTINGS }; }
+    }
+
+    function savePrintSettings() {
+      const settings = {
+        width: Math.min(76, Math.max(20, Number(document.getElementById('print-width-input')?.value) || 50)),
+        height: Math.max(10, Number(document.getElementById('print-height-input')?.value) || 30),
+        copies: Math.min(9999, Math.max(1, Number(document.getElementById('print-copies-input')?.value) || 1)),
+        orientation: document.getElementById('print-orientation-select')?.value || 'landscape',
+        printer: document.getElementById('print-printer-select')?.value || ''
+      };
+      localStorage.setItem(PRINT_SETTINGS_KEY, JSON.stringify(settings));
+      return settings;
+    }
+
+    function applyPrintSettings() {
+      const s = getPrintSettings();
+      const size = `${s.width}x${s.height}`;
+      const sizeSelect = document.getElementById('print-size-select');
+      if (sizeSelect) {
+        const has = Array.from(sizeSelect.options).some(o => o.value === size);
+        sizeSelect.value = has ? size : 'custom';
+      }
+      const w = document.getElementById('print-width-input');
+      const h = document.getElementById('print-height-input');
+      const c = document.getElementById('print-copies-input');
+      const o = document.getElementById('print-orientation-select');
+      const p = document.getElementById('print-printer-select');
+      if (w) w.value = s.width;
+      if (h) h.value = s.height;
+      if (c) c.value = s.copies;
+      if (o) o.value = s.orientation;
+      if (p && s.printer) p.value = s.printer;
+    }
+
+    function loadPrintSettings() {
+      applyPrintSettings();
+      setTimeout(refreshPrintPrinters, 500);
+    }
+
+    function onPrintSettingChanged() {
+      const size = document.getElementById('print-size-select')?.value;
+      if (size && size !== 'custom') {
+        const [w,h] = size.split('x').map(Number);
+        document.getElementById('print-width-input').value = w;
+        document.getElementById('print-height-input').value = h;
+      }
+      savePrintSettings();
+      renderBarcodePreview();
+    }
+
+    function onCustomPrintSizeChanged() {
+      document.getElementById('print-size-select').value = 'custom';
+      savePrintSettings();
+      renderBarcodePreview();
+    }
+
+    async function refreshPrintPrinters() {
+      const status = document.getElementById('print-bridge-status');
+      const select = document.getElementById('print-printer-select');
+      if (!status || !select) return;
+      try {
+        const r = await fetch(PRINT_BRIDGE_URL + '/printers', { cache: 'no-store' });
+        const data = await r.json();
+        if (data.status !== 'ok') throw new Error('Bridge error');
+        const old = getPrintSettings().printer;
+        select.innerHTML = '';
+        (data.printers || []).forEach(name => {
+          const op = document.createElement('option'); op.value = name; op.textContent = name; select.appendChild(op);
+        });
+        if (!select.options.length) {
+          select.innerHTML = '<option value="">لا توجد طابعات مثبتة</option>';
+        } else {
+          select.value = (data.printers || []).includes(old) ? old : (data.default || data.printers[0]);
+          savePrintSettings();
+        }
+        status.textContent = '🟢 جسر الطباعة متصل — يمكن الطباعة مباشرة من البرنامج.';
+        status.style.background = '#dcfce7';
+        status.style.color = '#166534';
+      } catch (e) {
+        status.textContent = '🔴 جسر الطباعة غير متصل. شغّل PrintBridge_SAMO.py على هذا الجهاز.';
+        status.style.background = '#fee2e2';
+        status.style.color = '#991b1b';
+      }
+    }
+
     function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, c => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      }[c]));
+      return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    function renderBarcodePreview() {
+      if (!currentBarcodePrintData) return;
+      const d = currentBarcodePrintData;
+      const svg = document.getElementById('prev-barcode-svg');
+      document.getElementById('prev-barcode-name').innerText = d.name || 'اسم الدواء';
+      document.getElementById('prev-barcode-num').innerText = d.barcode || 'بدون باركود';
+      document.getElementById('prev-barcode-price').innerText = d.price.toLocaleString() + ' د.ع';
+      if (svg && window.JsBarcode && d.barcode) {
+        try {
+          JsBarcode(svg, d.barcode, { format:'CODE128', displayValue:true, fontSize:11, height:55, margin:4, width:1.7 });
+        } catch (e) { svg.innerHTML = '<text x="5" y="20">باركود غير صالح</text>'; }
+      }
     }
 
     function openDirectBarcodeModal(name, barcode, price) {
       if (!isAdminUnlocked) return alert("طباعة الباركود متاحة فقط لصاحب المذخر.");
       currentBarcodePrintData = { name: name || '', barcode: barcode || '', price: Number(price) || 0 };
-      document.getElementById('prev-barcode-name').innerText = currentBarcodePrintData.name;
-      document.getElementById('prev-barcode-num').innerText = currentBarcodePrintData.barcode || 'بدون باركود';
-      document.getElementById('prev-barcode-price').innerText = currentBarcodePrintData.price.toLocaleString() + ' د.ع';
-      document.getElementById('prev-barcode-svg').innerHTML =
-        `<div style="font-family:monospace;font-size:22px;letter-spacing:2px;white-space:nowrap;">▌▌ ${escapeHtml(currentBarcodePrintData.barcode || '000000000')} ▐▐</div>`;
+      applyPrintSettings();
       document.getElementById('modal-direct-barcode').style.display = 'flex';
+      renderBarcodePreview();
+      refreshPrintPrinters();
     }
 
     function closeDirectBarcodeModal() {
@@ -2199,18 +2291,39 @@
       currentBarcodePrintData = null;
     }
 
-    function executeDirectThermalPrint() {
+    async function executeDirectThermalPrint() {
       if (!currentBarcodePrintData) return;
-      const orientation = document.getElementById('print-orientation-select').value || 'landscape';
+      const settings = savePrintSettings();
+      if (!settings.printer) return alert('اختر طابعة Windows أولاً.');
       const d = currentBarcodePrintData;
-      const win = window.open('', '_blank', 'width=500,height=400');
-      if (!win) return alert("يرجى السماح بفتح نافذة الطباعة من المتصفح.");
-      win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>طباعة باركود</title>
-      <style>@page{size:${orientation === 'portrait' ? '38mm 72mm' : '72mm 38mm'};margin:0}html,body{margin:0;width:100%;height:100%;font-family:Arial;text-align:center}body{display:flex;align-items:center;justify-content:center}.label{width:90%;}.name{font-weight:700;font-size:11px}.bar{font-family:monospace;font-size:20px;letter-spacing:1px;margin:6px 0}.num{font-family:monospace;font-size:11px;font-weight:700}.price{font-size:10px;font-weight:700;margin-top:3px}</style></head>
-      <body><div class="label"><div class="name">${escapeHtml(d.name)}</div><div class="bar">▌▌ ${escapeHtml(d.barcode || '000000000')} ▐▐</div><div class="num">${escapeHtml(d.barcode || '')}</div><div class="price">${d.price.toLocaleString()} د.ع</div></div></body></html>`);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); }, 250);
+      // XP-360B accepts TSPL and has a 76 mm print width according to Xprinter specs.
+      // For Arabic names, the bridge currently prioritizes barcode reliability; ASCII names can print natively.
+      const latinName = /^[\x00-\x7F]*$/.test(d.name) ? d.name : '';
+      try {
+        const response = await fetch(PRINT_BRIDGE_URL + '/print', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            printer: settings.printer, width_mm: settings.width, height_mm: settings.height,
+            copies: settings.copies, orientation: settings.orientation, barcode: d.barcode,
+            name_latin: latinName, price_text: d.price ? d.price.toLocaleString() + ' IQD' : ''
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || result.status !== 'ok') throw new Error(result.message || 'فشلت الطباعة');
+        alert('تم إرسال ' + settings.copies + ' ملصق إلى ' + settings.printer);
+      } catch (e) {
+        alert('تعذر الطباعة المباشرة: ' + e.message + '\n\nتأكد أن PrintBridge_SAMO.py يعمل على هذا الجهاز.');
+      }
+    }
+
+    function printBarcodeBrowserFallback() {
+      if (!currentBarcodePrintData) return;
+      const d = currentBarcodePrintData;
+      const s = savePrintSettings();
+      const win = window.open('', '_blank', 'width=500,height=500');
+      if (!win) return alert('يرجى السماح بفتح نافذة الطباعة.');
+      win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>باركود</title><style>@page{size:${s.width}mm ${s.height}mm;margin:0}html,body{margin:0;padding:0;width:${s.width}mm;height:${s.height}mm}body{font-family:Arial;text-align:center;display:flex;align-items:center;justify-content:center}.label{width:96%;overflow:hidden}.name{font-weight:700;font-size:11px}.bar{margin:3px 0}.num{font-family:monospace;font-size:10px;font-weight:700}.price{font-size:9px;font-weight:700}</style></head><body><div class="label"><div class="name">${escapeHtml(d.name)}</div><div class="bar">${escapeHtml(d.barcode || '000000000')}</div><div class="num">${escapeHtml(d.barcode || '')}</div><div class="price">${d.price.toLocaleString()} د.ع</div></div></body></html>`);
+      win.document.close(); win.focus(); setTimeout(()=>win.print(),250);
     }
 
     function generateBarcodeField(inputId) {
