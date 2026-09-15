@@ -1065,6 +1065,49 @@
     let savedPharmacies = [];
     let cartMap = {};
     let posCartMap = {};
+    const CART_STORAGE_PREFIX = 'samo_user_cart_v1_';
+    const CART_USER_ID_KEY = 'samo_cart_user_id_v1';
+
+    function getCartUserId() {
+      let id = localStorage.getItem(CART_USER_ID_KEY);
+      if (!id) {
+        id = (window.crypto && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        localStorage.setItem(CART_USER_ID_KEY, id);
+      }
+      return id;
+    }
+
+    function getCartStorageKey() {
+      return CART_STORAGE_PREFIX + getCartUserId();
+    }
+
+    function saveUserCart() {
+      try {
+        localStorage.setItem(getCartStorageKey(), JSON.stringify(cartMap));
+      } catch (e) {}
+    }
+
+    function loadUserCart() {
+      try {
+        const saved = localStorage.getItem(getCartStorageKey());
+        if (!saved) {
+          cartMap = {};
+          return;
+        }
+        const parsed = JSON.parse(saved);
+        cartMap = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+      } catch (e) {
+        cartMap = {};
+      }
+    }
+
+    function clearUserCart() {
+      cartMap = {};
+      try { localStorage.removeItem(getCartStorageKey()); } catch (e) {}
+    }
+
     let currentFilter = 'all';
     let hideOutStock = false;
     let posHideOutStock = false;
@@ -1272,6 +1315,8 @@
       if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
       const localOrders = localStorage.getItem('samo_orders_v39');
       if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
+
+      loadUserCart();
 
       populateCompanyDropdown();
       populateReportCompanyDropdown();
@@ -1626,6 +1671,7 @@
         if (qty > 0) cartMap[prodId] = qty;
         else delete cartMap[prodId];
       }
+      saveUserCart();
       renderProducts();
     }
 
@@ -1636,6 +1682,7 @@
       const next = cur + delta;
       if (next <= 0) delete cartMap[prodId];
       else if (next <= prod.quantity) cartMap[prodId] = next;
+      saveUserCart();
       renderProducts();
     }
 
@@ -1700,12 +1747,14 @@
       } else {
         alert("الكمية المطلوبة تتجاوز المتوفر!");
       }
+      saveUserCart();
       renderProducts();
       refreshCheckoutModal();
     }
 
     function removeCheckoutItem(prodId) {
       delete cartMap[prodId];
+      saveUserCart();
       renderProducts();
       if (Object.keys(cartMap).length === 0) {
         closeSendModal();
@@ -1739,7 +1788,7 @@
       };
 
       ordersList.unshift(order);
-      cartMap = {};
+      clearUserCart();
       closeSendModal();
       renderProducts();
       renderOrders();
@@ -1776,7 +1825,6 @@
           <div style="font-size:11px;color:var(--ios-sub);margin-top:3px;">📅 ${escapeHtml(o.date)} | المواد: ${(o.items||[]).length} | المبلغ المطلوب: ${(o.totalAmount||0).toLocaleString()} د.ع</div>
           <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
             <button class="btn" style="background:var(--ios-green);" onclick="openInspectModal(${idx})">🔎 فحص وتعديل</button>
-            <button class="btn btn-danger" onclick="deleteOrderRecord(${idx})">🗑️ حذف الطلبية</button>
             <button class="btn btn-sec" onclick="printInvoiceA4(${idx})">طباعة A4</button>
           </div>
         </div>`).join('');
@@ -1821,19 +1869,16 @@
 
     async function deleteOrderRecord(idx) {
       const o = ordersList[idx];
-      // الحذف مسموح فقط للطلبيات الواردة قبل الاعتماد والتجهيز.
-      // لا يتم تعديل inventory هنا، لذلك لا يتم خصم أي كمية من المخزن.
       if (!o || !isReviewStatus(o)) return alert('لا يمكن حذف قائمة مجهزة أو مسلّمة.');
-      if (confirm(`هل أنت متأكد من حذف الطلبية الواردة رقم (${o.orderNumber})؟\n\nهذه العملية تحذف الطلبية فقط ولا تخصم أي كمية من المخزن.`)) {
+      if (confirm(`هل أنت متأكد من حذف سجل الطلبية رقم (${o.orderNumber})؟`)) {
         ordersList.splice(idx, 1);
         localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-        renderIncomingOrders();
         renderOrders();
         try {
           await postToApi({ action: 'delete_order', orderNumber: o.orderNumber });
           await loadRemoteData();
         } catch(e) {}
-        alert("تم حذف الطلبية الواردة بنجاح، ولم يتم خصم أي كمية من المخزن.");
+        alert("تم الحذف بنجاح!");
       }
     }
 
