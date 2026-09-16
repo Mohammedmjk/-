@@ -564,33 +564,73 @@
       #invoice-a4-sheet { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
     }
   
-    /* تثبيت منطقة البحث أعلى الشاشة، بينما قائمة الأدوية فقط هي التي تتحرك */
-    .app-header,
-    header.app-header {
-      position: sticky !important;
-      top: 0 !important;
+    /* ============================================================
+       تثبيت البحث فعلياً: الصفحة لا تتحرك، وقائمة الأدوية وحدها تتحرك
+       ملاحظة: الحاوية الصحيحة للقائمة هي #prod-list-container
+       ============================================================ */
+    html, body {
+      height: 100%;
+      overflow: hidden !important;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 0 !important;
+    }
+
+    body > header {
+      flex: 0 0 auto;
+      position: relative !important;
+      top: auto !important;
       z-index: 1000 !important;
     }
 
-    /* إذا كان رأس التطبيق داخل الحاوية الرئيسية، يبقى ثابتاً أيضاً */
-    #app-header,
-    .search-header,
-    .search-section {
-      position: sticky;
-      top: 0;
-      z-index: 999;
+    body > .tabs-bar {
+      flex: 0 0 auto;
     }
 
-    /* مساحة قائمة الأدوية تصبح منطقة التمرير */
-    #products-list-container {
-      overflow-y: auto;
+    #view-home {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden !important;
+    }
+
+    #view-home .alert-banner-container {
+      flex: 0 0 auto;
+    }
+
+    #view-home .search-wrapper {
+      flex: 0 0 auto;
+      position: relative !important;
+      top: auto !important;
+      z-index: 1000 !important;
+      background: var(--ios-bg);
+    }
+
+    /* هذه هي منطقة التمرير الوحيدة في شاشة الأدوية */
+    #prod-list-container {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
+      padding-bottom: 20px;
     }
 
-    /* لا نسمح للصفحة كلها بالتحرك أثناء تصفح الأدوية */
+    /* إلغاء أي sticky قديم داخل شاشة البحث */
+    #view-home .search-box-rel,
+    #view-home .search-wrapper {
+      transform: none !important;
+    }
+
     body.samo-products-scroll {
-      overflow: hidden;
+      overflow: hidden !important;
     }
 
 </style>
@@ -1250,28 +1290,31 @@
 
 
     function lockSearchWhileProductsScroll() {
-      const searchInput = document.getElementById('search-box');
-      if (!searchInput) return;
+      // لا نستخدم sticky هنا؛ نجعل بنية الشاشة نفسها ثابتة،
+      // ونضع التمرير حصراً داخل قائمة الأدوية.
+      const home = document.getElementById('view-home');
+      const search = document.querySelector('#view-home .search-wrapper');
+      const list = document.getElementById('prod-list-container');
+      if (!home || !search || !list) return;
 
-      // ابحث عن أقرب حاوية تحتوي على البحث، ثم ثبّتها.
-      let searchArea = searchInput.closest('.search-box-rel')
-        || searchInput.closest('.search-container')
-        || searchInput.parentElement;
+      home.style.display = 'flex';
+      home.style.flexDirection = 'column';
+      home.style.minHeight = '0';
+      home.style.overflow = 'hidden';
 
-      if (!searchArea) return;
+      search.style.position = 'relative';
+      search.style.top = 'auto';
+      search.style.flex = '0 0 auto';
+      search.style.zIndex = '1000';
 
-      searchArea.style.position = 'sticky';
-      searchArea.style.top = '0px';
-      searchArea.style.zIndex = '1000';
-      searchArea.style.background = 'var(--ios-bg, #f5f5f7)';
-      searchArea.style.paddingTop = '6px';
-      searchArea.style.paddingBottom = '6px';
-
-      const list = document.getElementById('products-list-container');
-      if (list) {
-        list.style.overflowY = 'auto';
-        list.style.webkitOverflowScrolling = 'touch';
-      }
+      list.style.flex = '1 1 auto';
+      list.style.minHeight = '0';
+      list.style.height = 'auto';
+      list.style.maxHeight = 'none';
+      list.style.overflowY = 'auto';
+      list.style.overflowX = 'hidden';
+      list.style.webkitOverflowScrolling = 'touch';
+      list.style.overscrollBehavior = 'contain';
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -1420,46 +1463,168 @@
       try {
         const F = window.Html5QrcodeSupportedFormats;
         if (!F) return undefined;
-        return [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR, F.RSS_14, F.RSS_EXPANDED].filter(v => v !== undefined);
-      } catch (e) { return undefined; }
+        return [
+          F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
+          F.CODE_128, F.CODE_39, F.CODE_93, F.ITF,
+          F.CODABAR, F.RSS_14, F.RSS_EXPANDED
+        ].filter(v => v !== undefined);
+      } catch (e) {
+        return undefined;
+      }
+    }
+
+    function normalizeBarcodeValue(value) {
+      return String(value || '').trim().replace(/\s+/g, '').replace(/[^0-9A-Za-z]/g, '');
+    }
+
+    function findProductByBarcode(value) {
+      const code = normalizeBarcodeValue(value);
+      if (!code) return null;
+      return (inventory || []).find(p =>
+        normalizeBarcodeValue(p.barcode) === code
+      ) || null;
     }
 
     function handleBarcodeDecoded(decodedText) {
       const value = String(decodedText || '').trim();
       if (!value) return;
-      if (navigator.vibrate) navigator.vibrate(100);
+
+      const matchedProduct = findProductByBarcode(value);
       const inputElem = document.getElementById(targetSearchInputId);
+
+      // لا يوجد اهتزاز إلا إذا كان الباركود مطابقاً لمادة موجودة في المخزن.
+      if (matchedProduct && navigator.vibrate) {
+        try { navigator.vibrate(100); } catch (e) {}
+      }
+
       if (inputElem) {
         inputElem.value = value;
-        if (targetSearchInputId === 'pos-search-box') renderPosProducts();
-        else renderProducts();
+        if (targetSearchInputId === 'pos-search-box') {
+          renderPosProducts();
+        } else {
+          renderProducts();
+        }
       }
+
       closeCameraScanner();
+
+      // إذا لم يوجد تطابق، لا نهز الهاتف ولا نطلق تنبيهاً مزعجاً.
+      // يبقى رقم الباركود في مربع البحث ليظهر أنه غير موجود.
     }
 
     async function openCameraScanner(inputId) {
       targetSearchInputId = inputId || 'search-box';
+
       const modal = document.getElementById('modal-scanner');
       const status = document.getElementById('scanner-status');
       if (modal) modal.style.display = 'flex';
-      if (status) status.textContent = 'جاري تشغيل الكاميرا...';
+      if (status) status.textContent = 'جاري تجهيز الكاميرا...';
+
       try {
-        if (!window.Html5Qrcode) throw new Error('قارئ الباركود غير متاح حالياً.');
-        if (html5QrScanner) { try { await html5QrScanner.stop(); } catch (e) {} }
+        if (!window.Html5Qrcode) {
+          throw new Error('مكتبة قراءة الباركود غير متاحة.');
+        }
+
+        // إيقاف أي جلسة سابقة قبل بدء جلسة جديدة.
+        if (html5QrScanner) {
+          try { await html5QrScanner.stop(); } catch (e) {}
+          try { await html5QrScanner.clear(); } catch (e) {}
+        }
+
         html5QrScanner = new Html5Qrcode('reader');
-        const cameras = await Html5Qrcode.getCameras();
-        if (!cameras || !cameras.length) throw new Error('لم يتم العثور على كاميرا.');
-        let cameraId = cameras[0].id;
-        const preferred = cameras.find(c => /back|rear|environment|خلف|خلفية/i.test(c.label || ''));
-        if (preferred) cameraId = preferred.id;
-        const config = { fps: 12, qrbox: { width: 290, height: 150 }, aspectRatio: 1.7777778, disableFlip: false };
+
         const formats = getBarcodeFormatsForScanner();
-        if (formats && formats.length) config.formatsToSupport = formats;
-        await html5QrScanner.start(cameraId, config, handleBarcodeDecoded, () => {});
-        if (status) status.textContent = 'قرّب الباركود أو أبعده قليلاً حتى تظهر الخطوط كاملة داخل الإطار.';
+
+        // إعدادات متوافقة مع أجهزة أكثر، مع مساحة مسح عريضة للباركود.
+        const config = {
+          fps: 10,
+          qrbox: { width: 300, height: 160 },
+          aspectRatio: 1.7777778,
+          disableFlip: false
+        };
+        if (formats && formats.length) {
+          config.formatsToSupport = formats;
+        }
+
+        // الطريقة الأولى: يطلب من المتصفح الكاميرا الخلفية مباشرة.
+        // هذه الطريقة تعمل حتى عندما لا يعيد الجهاز قائمة كاميرات بأسمائها.
+        let started = false;
+        let firstError = null;
+
+        try {
+          await html5QrScanner.start(
+            { facingMode: { exact: 'environment' } },
+            config,
+            handleBarcodeDecoded,
+            () => {}
+          );
+          started = true;
+        } catch (e1) {
+          firstError = e1;
+        }
+
+        // بعض الهواتف لا تقبل exact environment؛ نجرب environment العادية.
+        if (!started) {
+          try {
+            await html5QrScanner.start(
+              { facingMode: 'environment' },
+              config,
+              handleBarcodeDecoded,
+              () => {}
+            );
+            started = true;
+          } catch (e2) {
+            firstError = e2;
+          }
+        }
+
+        // آخر حل: الحصول على رقم الكاميرا واختيار الخلفية إن أمكن.
+        if (!started) {
+          let cameras = [];
+          try {
+            cameras = await Html5Qrcode.getCameras();
+          } catch (e3) {}
+
+          if (cameras && cameras.length) {
+            const preferred = cameras.find(c =>
+              /back|rear|environment|خلف|خلفية/i.test(String(c.label || ''))
+            );
+            const cameraId = preferred ? preferred.id : cameras[cameras.length - 1].id;
+
+            try {
+              await html5QrScanner.start(
+                cameraId,
+                config,
+                handleBarcodeDecoded,
+                () => {}
+              );
+              started = true;
+            } catch (e4) {
+              firstError = e4;
+            }
+          }
+        }
+
+        if (!started) {
+          throw firstError || new Error('تعذر الوصول إلى كاميرا الجهاز.');
+        }
+
+        if (status) {
+          status.textContent =
+            'وجّه الكاميرا إلى الباركود كاملاً داخل الإطار. إذا لم يتعرف عليه فوراً قرّب الهاتف أو أبعده قليلاً.';
+        }
+
       } catch (e) {
-        if (status) status.textContent = 'تعذر تشغيل الكاميرا. استخدم زر «اختيار صورة للباركود» أسفل النافذة.';
-        alert('تعذر تشغيل قارئ الباركود بالكاميرا.\n\nالسبب: ' + (e.message || e) + '\n\nيمكنك استخدام «اختيار صورة للباركود» كبديل.');
+        if (status) {
+          status.textContent =
+            'تعذر تشغيل الكاميرا على هذا الجهاز. يمكنك استخدام «اختيار صورة للباركود».';
+        }
+
+        alert(
+          'تعذر تشغيل قارئ الباركود على هذا الجهاز.\n\n' +
+          'تأكد من السماح للمتصفح باستخدام الكاميرا، ثم جرّب مرة أخرى.\n\n' +
+          'إذا لم تعمل الكاميرا، استخدم «اختيار صورة للباركود».'
+        );
       }
     }
 
@@ -1467,24 +1632,52 @@
       const input = document.getElementById('barcode-image-input');
       if (!input) return;
       input.value = '';
+
       input.onchange = async function() {
         const file = input.files && input.files[0];
         if (!file) return;
+
         try {
-          if (html5QrScanner) { try { await html5QrScanner.stop(); } catch (e) {} }
-          if (!html5QrScanner) html5QrScanner = new Html5Qrcode('reader');
+          if (html5QrScanner) {
+            try { await html5QrScanner.stop(); } catch (e) {}
+          }
+          if (!html5QrScanner) {
+            html5QrScanner = new Html5Qrcode('reader');
+          }
+
           const decoded = await html5QrScanner.scanFile(file, true);
           handleBarcodeDecoded(decoded);
+
         } catch (e) {
-          alert('لم أستطع قراءة الباركود من الصورة.\nجرّب صورة أوضح، واجعل الباركود مستقيماً وكاملاً.');
+          alert(
+            'لم أستطع قراءة الباركود من الصورة.\n' +
+            'جرّب صورة أوضح، واجعل الباركود مستقيماً وكاملاً.'
+          );
         }
       };
+
       input.click();
     }
 
     function closeCameraScanner() {
-      const hide = () => { const modal = document.getElementById('modal-scanner'); if (modal) modal.style.display = 'none'; };
-      if (html5QrScanner) html5QrScanner.stop().then(hide).catch(hide); else hide();
+      const hide = () => {
+        const modal = document.getElementById('modal-scanner');
+        if (modal) modal.style.display = 'none';
+      };
+
+      if (html5QrScanner) {
+        html5QrScanner.stop()
+          .then(() => {
+            try { html5QrScanner.clear(); } catch (e) {}
+            hide();
+          })
+          .catch(() => {
+            try { html5QrScanner.clear(); } catch (e) {}
+            hide();
+          });
+      } else {
+        hide();
+      }
     }
 
     function openCameraForImage(inputId) {
@@ -2601,7 +2794,7 @@
     }
 
     function setMainTab(t) {
-      document.getElementById('view-home').style.display = t === 'home' ? 'block' : 'none';
+      document.getElementById('view-home').style.display = t === 'home' ? 'flex' : 'none';
       document.getElementById('view-pos').style.display = t === 'pos' ? 'block' : 'none';
       document.getElementById('view-incoming').style.display = t === 'incoming' ? 'block' : 'none';
       document.getElementById('view-log').style.display = t === 'log' ? 'block' : 'none';
@@ -2618,6 +2811,7 @@
       if (t === 'reports' && isAdminUnlocked) updateReportsView();
       if (t === 'staff' && isAdminUnlocked) renderStaffManagementView();
       if (t === 'pos' && isAdminUnlocked) renderPosProducts();
+      if (t === 'home') requestAnimationFrame(lockSearchWhileProductsScroll);
       if (t === 'log') { renderOrders(); }
     }
 
