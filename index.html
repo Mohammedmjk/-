@@ -153,6 +153,37 @@
       border-color: var(--ios-blue);
       box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
     }
+    .search-suggestions {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      left: 0;
+      z-index: 120;
+      background: #fff;
+      border: 1px solid var(--ios-border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      overflow: hidden;
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .search-suggestion-item {
+      width: 100%;
+      border: 0;
+      background: #fff;
+      text-align: right;
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f2;
+      font-size: 13px;
+    }
+    .search-suggestion-item:last-child { border-bottom: 0; }
+    .search-suggestion-item:hover,
+    .search-suggestion-item:active { background: #f2f7ff; }
+    .search-suggestion-main { font-weight: 800; }
+    .search-suggestion-sub { font-size: 10px; color: var(--ios-sub); margin-top: 2px; }
+
     .camera-scan-icon-btn {
       position: absolute;
       left: 8px;
@@ -557,7 +588,7 @@
     <div class="tab-item active" id="tab-btn-home" onclick="setMainTab('home')">الأدوية والمخزن</div>
     <div class="tab-item" id="tab-btn-pos" style="display: none;" onclick="setMainTab('pos')">🛒 نافذة نقطة البيع (POS)</div>
     <div class="tab-item" id="tab-btn-incoming" style="display: none;" onclick="setMainTab('incoming')">📥 الطلبيات الواردة <span id="incoming-count-badge" style="display:none;background:#ff3b30;color:#fff;border-radius:10px;padding:1px 5px;font-size:9px;margin-right:3px;">0</span></div>
-    <div class="tab-item" id="tab-btn-log" onclick="setMainTab('log')">سجل الصادر</div>
+    <div class="tab-item" id="tab-btn-log" onclick="setMainTab('log')"><span id="log-tab-title">طلباتي</span></div>
     <div class="tab-item" id="tab-btn-staff" style="display: none;" onclick="setMainTab('staff')">👤 تقارير الموظفين</div>
     <div class="tab-item" id="tab-btn-reports" style="display: none;" onclick="setMainTab('reports')">التقارير المالية</div>
   </div>
@@ -568,7 +599,7 @@
     <div class="search-wrapper">
       <div class="search-row-flex">
         <div class="search-box-rel">
-          <input type="text" id="search-box" class="search-input" placeholder="🔍 ابحث بالمادة، الباركود، أو الشركة..." oninput="renderProducts()">
+          <input type="text" id="search-box" class="search-input" autocomplete="off" placeholder="🔍 اكتب أي حرف من اسم الدواء..." oninput="handleMainSearchInput()" onfocus="renderSearchSuggestions()">
           <button class="camera-scan-icon-btn" onclick="openCameraScanner('search-box')" title="مسح باركود بالكاميرا">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -576,6 +607,7 @@
             </svg>
           </button>
           <button type="button" class="ai-image-search-btn" onclick="openAiMedicineCamera('search')" title="تصوير الدواء والبحث عنه بالذكاء الاصطناعي">📷✨</button>
+          <div id="search-suggestions" class="search-suggestions"></div>
         </div>
 
         <div class="icon-action-circle" id="toggle-out-stock-circle" onclick="toggleHideOutStock()" title="إخفاء/إظهار الأدوية النافذة">
@@ -699,8 +731,8 @@
   <div id="view-log" style="display: none; padding: 0 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap:8px;">
       <div>
-        <div style="font-size: 13px; font-weight: 800; color: var(--ios-text);">سجل الصادر والطلبات</div>
-        <div style="font-size: 10px; color: var(--ios-sub); margin-top:2px;">الطلبات المرسلة والمجهزة والمسلمة، وتتم مزامنتها مباشرة من Google Sheets.</div>
+        <div id="log-view-title" style="font-size: 13px; font-weight: 800; color: var(--ios-text);">طلباتي</div>
+        <div id="log-view-subtitle" style="font-size: 10px; color: var(--ios-sub); margin-top:2px;">الطلبات التي أرسلتها، مع المواد والتاريخ والوقت وحالة الطلب.</div>
       </div>
       <button class="btn btn-sec" style="font-size: 11px; padding: 6px 10px;" onclick="triggerSync()">☁️ مزامنة الطلبات</button>
     </div>
@@ -1156,11 +1188,45 @@
     let staffNamesList = JSON.parse(localStorage.getItem('samo_staff_names_list') || '["أحمد", "محمد", "علي", "سجاد"]');
     let deletedStaffNames = JSON.parse(localStorage.getItem('samo_deleted_staff_names') || '[]');
     let targetImageInputId = null;
+    const USER_ID_KEY = 'samo_user_id_v1';
+    const USER_PHARMACY_NAME_KEY = 'samo_user_pharmacy_name_v1';
+    const USER_PHARMACY_PHONE_KEY = 'samo_user_pharmacy_phone_v1';
+
+    function getLocalUserId() {
+      let id = localStorage.getItem(USER_ID_KEY);
+      if (!id) {
+        id = 'USR-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(USER_ID_KEY, id);
+      }
+      return id;
+    }
+
+    function normalizePhone(value) {
+      return String(value || '').replace(/[\s\-()]/g, '').replace(/^00/, '+');
+    }
+
+    function rememberUserOrderIdentity(pharmacyName, phone) {
+      localStorage.setItem(USER_PHARMACY_NAME_KEY, String(pharmacyName || '').trim());
+      localStorage.setItem(USER_PHARMACY_PHONE_KEY, normalizePhone(phone));
+    }
+
+    function getUserOrderIdentity() {
+      return {
+        userId: getLocalUserId(),
+        pharmacyName: String(localStorage.getItem(USER_PHARMACY_NAME_KEY) || '').trim(),
+        phone: normalizePhone(localStorage.getItem(USER_PHARMACY_PHONE_KEY) || '')
+      };
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
       initSystem();
-      window.addEventListener('click', () => {
+      window.addEventListener('click', (event) => {
         document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
+        const box = document.getElementById('search-suggestions');
+        const rel = document.querySelector('.search-box-rel');
+        if (box && rel && !rel.contains(event.target)) {
+          box.style.display = 'none';
+        }
       });
     });
 
@@ -1233,6 +1299,63 @@
     function togglePosHideOutStock() {
       posHideOutStock = !posHideOutStock;
       renderPosProducts();
+    }
+
+    function handleMainSearchInput() {
+      renderProducts();
+      renderSearchSuggestions();
+    }
+
+    function renderSearchSuggestions() {
+      const box = document.getElementById('search-suggestions');
+      const input = document.getElementById('search-box');
+      if (!box || !input) return;
+
+      const q = String(input.value || '').trim().toLowerCase();
+      if (!q) {
+        box.innerHTML = '';
+        box.style.display = 'none';
+        return;
+      }
+
+      const rows = (inventory || []).filter(p => {
+        const name = String(p.name || '').toLowerCase();
+        const barcode = String(p.barcode || '').toLowerCase();
+        const company = String(p.company || '').toLowerCase();
+        return name.includes(q) || barcode.includes(q) || company.includes(q);
+      }).sort((a, b) => {
+        const an = String(a.name || '').toLowerCase();
+        const bn = String(b.name || '').toLowerCase();
+        const ap = an.startsWith(q) ? 0 : 1;
+        const bp = bn.startsWith(q) ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return an.localeCompare(bn, 'ar');
+      }).slice(0, 12);
+
+      if (!rows.length) {
+        box.innerHTML = '';
+        box.style.display = 'none';
+        return;
+      }
+
+      box.innerHTML = rows.map(p => `
+        <button type="button" class="search-suggestion-item" onclick="selectSearchSuggestion('${escapeHtml(String(p.id))}')">
+          <div class="search-suggestion-main">${escapeHtml(p.name)}</div>
+          <div class="search-suggestion-sub">${escapeHtml(p.company || '')}${p.barcode ? ' | ' + escapeHtml(p.barcode) : ''}</div>
+        </button>
+      `).join('');
+      box.style.display = 'block';
+    }
+
+    function selectSearchSuggestion(prodId) {
+      const p = (inventory || []).find(x => String(x.id) === String(prodId));
+      const input = document.getElementById('search-box');
+      if (!p || !input) return;
+      input.value = p.name || '';
+      const box = document.getElementById('search-suggestions');
+      if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+      renderProducts();
+      input.focus();
     }
 
     function getBarcodeFormatsForScanner() {
@@ -1873,6 +1996,7 @@
       const targetOrder = {
         orderNumber: 'POS-' + Math.floor(1000 + Math.random() * 9000),
         pharmacyName: ph, phone: phone,
+        userId: getLocalUserId(),
         totalAmount: newItems.reduce((s, x) => s + (x.price * x.quantity), 0),
         status: 'قيد المراجعة',
         date: new Date().toLocaleString('ar-IQ'),
@@ -1880,6 +2004,7 @@
         items: newItems
       };
 
+      rememberUserOrderIdentity(ph, phone);
       ordersList.unshift(targetOrder);
       posCartMap = {};
       document.getElementById('pos-ph-name').value = '';
@@ -2063,6 +2188,7 @@
       const order = {
         orderNumber: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
         pharmacyName: ph, phone: phone,
+        userId: getLocalUserId(),
         totalAmount: newItems.reduce((s, x) => s + (x.price * x.quantity), 0),
         status: 'قيد المراجعة',
         date: new Date().toLocaleString('ar-IQ'),
@@ -2070,6 +2196,7 @@
         items: newItems
       };
 
+      rememberUserOrderIdentity(ph, phone);
       ordersList.unshift(order);
       cartMap = {};
       closeSendModal();
@@ -2133,9 +2260,107 @@
       }
     }
 
+    function renderMyOrders() {
+      const container = document.getElementById('orders-list-container');
+      if (!container) return;
+
+      const identity = getUserOrderIdentity();
+      const uid = identity.userId;
+      const phone = normalizePhone(identity.phone);
+      const name = String(identity.pharmacyName || '').trim().toLowerCase();
+
+      const mine = (ordersList || []).map((o, idx) => ({o, idx})).filter(({o}) => {
+        const ouid = String(o.userId || '').trim();
+        const oph = normalizePhone(o.phone || '');
+        const oname = String(o.pharmacyName || '').trim().toLowerCase();
+        if (ouid && uid && ouid === uid) return true;
+        if (phone && oph && phone === oph) return true;
+        return false;
+      }).sort((a,b) => String(b.o.date || '').localeCompare(String(a.o.date || '')));
+
+      if (!mine.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ios-sub);">لا توجد طلبيات مرسلة من هذا الجهاز بعد.</div>';
+        return;
+      }
+
+      container.innerHTML = mine.map(({o,idx}) => {
+        const review = isReviewStatus(o);
+        const approved = isApprovedStatus(o);
+        const delivered = isDeliveredStatus(o);
+        const statusText = delivered ? '🚚 مستلمة' : (approved ? '📦 معتمدة ومجهزة' : '⏳ قيد المراجعة');
+        const statusBg = delivered ? '#e0f2fe' : (approved ? '#ecfdf5' : '#fff7ed');
+        const statusColor = delivered ? '#0369a1' : (approved ? '#15803d' : '#c2410c');
+        const items = Array.isArray(o.items) ? o.items : [];
+        const itemsHtml = items.length ? items.map(it => `
+          <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f2;font-size:12px;">
+            <span style="flex:1;"><b>${escapeHtml(it.name || '')}</b>${it.form ? ` <span style="color:var(--ios-sub);">(${escapeHtml(it.form)})</span>` : ''}</span>
+            <span>${Number(it.quantity || 0).toLocaleString()} × ${Number(it.price || 0).toLocaleString()} د.ع</span>
+          </div>
+        `).join('') : '<div style="padding:8px;color:var(--ios-sub);">لا توجد تفاصيل محفوظة لهذه الطلبية.</div>';
+
+        return `
+          <div class="prod-card" style="border-right:4px solid ${review ? 'var(--ios-orange)' : (delivered ? 'var(--ios-blue)' : 'var(--ios-green)')};">
+            <div style="display:flex;justify-content:space-between;gap:8px;font-weight:800;">
+              <span>📦 ${escapeHtml(o.orderNumber || '')}</span>
+              <span class="badge" style="background:${statusBg};color:${statusColor};">${statusText}</span>
+            </div>
+            <div style="font-size:11px;color:var(--ios-sub);margin-top:4px;">
+              📅 ${escapeHtml(o.date || '—')}
+            </div>
+            <div style="font-size:12px;margin-top:6px;">
+              <b>${items.length}</b> مادة | الإجمالي: <b style="color:var(--ios-green);">${Number(o.totalAmount || 0).toLocaleString()} د.ع</b>
+            </div>
+            <details style="margin-top:8px;">
+              <summary style="cursor:pointer;font-weight:800;font-size:12px;">عرض المواد والتفاصيل</summary>
+              <div style="margin-top:6px;">${itemsHtml}</div>
+              ${o.deliveryStaffName ? `<div style="font-size:11px;color:var(--ios-sub);margin-top:6px;">🚚 موظف التسليم: ${escapeHtml(o.deliveryStaffName)}${o.deliveredAt ? ' | ' + escapeHtml(o.deliveredAt) : ''}</div>` : ''}
+            </details>
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;flex-wrap:wrap;">
+              ${review ? `<button class="btn btn-danger" style="font-size:11px;padding:5px 9px;" onclick="deleteMyOrderRecord(${idx})">إلغاء الطلب</button>` : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">لا يمكن إلغاء الطلب بعد الاعتماد</span>`}
+              <button class="btn btn-sec" style="font-size:11px;padding:5px 9px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deleteMyOrderRecord(idx) {
+      const o = ordersList[idx];
+      if (!o || !isReviewStatus(o)) return alert('لا يمكن إلغاء طلبية تم اعتمادها أو تجهيزها أو تسليمها.');
+      if (!confirm(`هل أنت متأكد من إلغاء الطلبية ${o.orderNumber}؟`)) return;
+
+      try {
+        await postToApi({ action: 'delete_order', orderNumber: o.orderNumber });
+        ordersList.splice(idx, 1);
+        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        renderMyOrders();
+        alert('تم إلغاء الطلبية قبل اعتمادها.');
+      } catch (e) {
+        alert('تعذر إلغاء الطلبية.\n\nالسبب: ' + (e.message || e));
+      }
+    }
+
     function renderOrders() {
       const container = document.getElementById('orders-list-container');
       if (!container) return;
+
+      if (!isAdminUnlocked) {
+        const title = document.getElementById('log-tab-title');
+        const viewTitle = document.getElementById('log-view-title');
+        const sub = document.getElementById('log-view-subtitle');
+        if (title) title.innerText = 'طلباتي';
+        if (viewTitle) viewTitle.innerText = 'طلباتي';
+        if (sub) sub.innerText = 'الطلبات التي أرسلتها، مع المواد والتاريخ والوقت وحالة الطلب.';
+        renderMyOrders();
+        return;
+      }
+
+      const title = document.getElementById('log-tab-title');
+      const viewTitle = document.getElementById('log-view-title');
+      const sub = document.getElementById('log-view-subtitle');
+      if (title) title.innerText = 'سجل الصادر';
+      if (viewTitle) viewTitle.innerText = 'سجل الصادر والطلبات';
+      if (sub) sub.innerText = 'الطلبات المجهزة والمسلمة، وتتم مزامنتها مباشرة من Google Sheets.';
       const outgoing = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => !isReviewStatus(x.o));
       if (!outgoing.length) { container.innerHTML='<div style="text-align:center;padding:40px;color:var(--ios-sub);">لا توجد قوائم صادرة مجهزة أو مسلمة</div>'; return; }
       container.innerHTML = outgoing.map(({o,idx}) => {
