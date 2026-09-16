@@ -563,7 +563,37 @@
       #invoice-a4-sheet, #invoice-a4-sheet * { visibility: visible; }
       #invoice-a4-sheet { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
     }
-  </style>
+  
+    /* تثبيت منطقة البحث أعلى الشاشة، بينما قائمة الأدوية فقط هي التي تتحرك */
+    .app-header,
+    header.app-header {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 1000 !important;
+    }
+
+    /* إذا كان رأس التطبيق داخل الحاوية الرئيسية، يبقى ثابتاً أيضاً */
+    #app-header,
+    .search-header,
+    .search-section {
+      position: sticky;
+      top: 0;
+      z-index: 999;
+    }
+
+    /* مساحة قائمة الأدوية تصبح منطقة التمرير */
+    #products-list-container {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* لا نسمح للصفحة كلها بالتحرك أثناء تصفح الأدوية */
+    body.samo-products-scroll {
+      overflow: hidden;
+    }
+
+</style>
 </head>
 <body>
 
@@ -1218,7 +1248,35 @@
       };
     }
 
+
+    function lockSearchWhileProductsScroll() {
+      const searchInput = document.getElementById('search-box');
+      if (!searchInput) return;
+
+      // ابحث عن أقرب حاوية تحتوي على البحث، ثم ثبّتها.
+      let searchArea = searchInput.closest('.search-box-rel')
+        || searchInput.closest('.search-container')
+        || searchInput.parentElement;
+
+      if (!searchArea) return;
+
+      searchArea.style.position = 'sticky';
+      searchArea.style.top = '0px';
+      searchArea.style.zIndex = '1000';
+      searchArea.style.background = 'var(--ios-bg, #f5f5f7)';
+      searchArea.style.paddingTop = '6px';
+      searchArea.style.paddingBottom = '6px';
+
+      const list = document.getElementById('products-list-container');
+      if (list) {
+        list.style.overflowY = 'auto';
+        list.style.webkitOverflowScrolling = 'touch';
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+      lockSearchWhileProductsScroll();
+      window.addEventListener('resize', lockSearchWhileProductsScroll);
       initSystem();
       window.addEventListener('click', (event) => {
         document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
