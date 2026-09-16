@@ -1061,9 +1061,16 @@
   </div>
 
   <script>
+    // Disable the old Service Worker because it can intercept localhost/loopback
+    // Print Bridge requests and make Chrome report ERR_FAILED.
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      window.addEventListener('load', async () => {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+          }
+        } catch (e) {}
       });
     }
 
@@ -2162,7 +2169,7 @@
 
     let currentBarcodePrintData = null;
 
-const PRINT_BRIDGE_URL = 'http://localhost:8765';
+const PRINT_BRIDGE_URL = 'http://127.0.0.1:8765';
     const PRINT_SETTINGS_KEY = 'samo_print_settings_v1';
     const DEFAULT_PRINT_SETTINGS = {
       width: 50, height: 30, copies: 1, orientation: 'landscape', printer: ''
