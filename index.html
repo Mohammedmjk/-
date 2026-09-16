@@ -170,6 +170,23 @@
       color: var(--ios-blue);
     }
 
+    .ai-image-search-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffffff;
+      border: 1px solid #d1d1d6;
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
     .icon-action-circle {
       width: 44px;
       height: 44px;
@@ -558,6 +575,7 @@
               <circle cx="12" cy="13" r="4"></circle>
             </svg>
           </button>
+          <button type="button" class="ai-image-search-btn" onclick="openAiMedicineCamera('search')" title="تصوير الدواء والبحث عنه بالذكاء الاصطناعي">📷✨</button>
         </div>
 
         <div class="icon-action-circle" id="toggle-out-stock-circle" onclick="toggleHideOutStock()" title="إخفاء/إظهار الأدوية النافذة">
@@ -580,6 +598,7 @@
                 <option value="Ampoule">Ampoule (أمبول)</option>
                 <option value="Cream">Cream (كريم)</option>
                 <option value="Ointment">Ointment (مرهم)</option>
+                <option value="Sachet">Sachet (ساشيت)</option>
                 <option value="Gel">Gel (جل)</option>
                 <option value="Drops">Drops (قطرات)</option>
               </select>
@@ -788,6 +807,9 @@
       <div id="scanner-video-box">
         <div id="reader" style="width:100%;"></div>
       </div>
+      <div id="scanner-status" style="font-size:12px;color:var(--ios-sub);text-align:center;padding:9px 4px 4px;">وجّه الكاميرا نحو خطوط الباركود بشكل واضح.</div>
+      <button type="button" class="btn btn-sec" style="width:100%;justify-content:center;margin-top:6px;padding:10px;" onclick="scanBarcodeFromImage()">📷 اختيار صورة للباركود كبديل</button>
+      <input type="file" id="barcode-image-input" accept="image/*" capture="environment" style="display:none;">
     </div>
   </div>
 
@@ -838,6 +860,7 @@
       </div>
 
       <div id="print-bridge-status" style="font-size:12px;padding:8px;border-radius:8px;background:#f2f2f7;margin-bottom:10px;">جاري فحص جسر الطباعة...</div>
+      <div style="font-size:11px;color:#7c2d12;background:#fff7ed;border:1px solid #fed7aa;padding:8px;border-radius:9px;margin-bottom:10px;">⚠️ للطباعة على ملصق واحد: اختر مقاس الملصق الحقيقي المركّب في الطابعة (مثلاً 50×30 مم) واجعل عدد النسخ 1.</div>
 
       <div class="barcode-preview-box" style="min-height:130px;">
         <div id="prev-barcode-name" style="font-size:12px;font-weight:bold;max-width:95%;overflow:hidden;white-space:nowrap;">اسم الدواء</div>
@@ -974,13 +997,14 @@
         <label>صورة المنتج (رابط أو التقاط بالكاميرا):</label>
         <div style="display: flex; gap: 6px;">
           <input type="text" id="in-image" placeholder="https://... أو التقاط">
-          <button class="btn btn-sec" style="background:#e0f2fe; color:#0369a1; white-space:nowrap;" onclick="openCameraForImage('in-image')">📷 التقاط</button>
+          <button type="button" class="btn btn-sec" style="background:#e0f2fe; color:#0369a1; white-space:nowrap;" onclick="openAiMedicineCamera('add')">📷✨ قراءة بالذكاء الاصطناعي</button>
         </div>
       </div>
       <div class="form-row">
         <label>الشركة / المنشأ:</label>
         <input type="text" id="in-company" placeholder="اسم الشركة المصنعة...">
       </div>
+      <div id="ai-medicine-extra-info" style="display:none; margin:-2px 0 8px; padding:8px 10px; border:1px solid #bfdbfe; background:#eff6ff; border-radius:9px; font-size:11px; line-height:1.7; color:#1e3a8a;"></div>
       <div class="form-row">
         <label>التصنيف / الشكل الدوائي:</label>
         <select id="in-form">
@@ -992,6 +1016,10 @@
           <option value="Vial">Vial (فيال)</option>
           <option value="Ampoule">Ampoule (أمبول)</option>
           <option value="Cream">Cream (كريم)</option>
+          <option value="Ointment">Ointment (مرهم)</option>
+          <option value="Sachet">Sachet (ساشيت)</option>
+          <option value="Gel">Gel (جل)</option>
+          <option value="Drops">Drops (قطرات)</option>
         </select>
       </div>
       <div style="display: flex; gap: 8px;">
@@ -1061,20 +1089,13 @@
   </div>
 
   <script>
-    // Disable the old Service Worker because it can intercept localhost/loopback
-    // Print Bridge requests and make Chrome report ERR_FAILED.
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (const registration of registrations) {
-            await registration.unregister();
-          }
-        } catch (e) {}
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
       });
     }
 
-    const API_URL = "https://script.google.com/macros/s/AKfycbyfXHYmrxVGhNYzo7LlOQkWI9-f_z_z9Fc3LmVlO9VhC0QG8BXeCpyiwpNso0FHj1vm/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwgE2XZAq88ETjSM19APsdJHVPkCV9RhAyBpmhV3J3jCWGmixaARgm8wD0yn5jaaTxD/exec";
 
     function parseAppNumber(value) {
       if (value === null || value === undefined || value === '') return 0;
@@ -1085,15 +1106,32 @@
     }
 
     async function postToApi(payload) {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
+      const controller = new AbortController();
+      const timeoutMs = payload && payload.action === 'gemini_analyze_medicine_image' ? 45000 : 30000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      let response;
+      try {
+        response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+      } catch (e) {
+        if (e && e.name === 'AbortError') {
+          throw new Error('انتهت مهلة الاتصال بالخادم. جرّب صورة أصغر أو أوضح ثم أعد المحاولة.');
+        }
+        throw new Error('تعذر الاتصال بـ Google Apps Script: ' + (e && e.message ? e.message : e));
+      } finally {
+        clearTimeout(timeoutId);
+      }
       const text = await response.text();
       let result = {};
       try { result = JSON.parse(text); } catch (e) {}
       if (!response.ok || result.status === 'error') {
+        if (response.status === 404) {
+          throw new Error('رابط Google Apps Script غير صحيح أو الإصدار المنشور غير موجود (404).');
+        }
         throw new Error(result.message || ('HTTP ' + response.status));
       }
       return result;
@@ -1197,31 +1235,75 @@
       renderPosProducts();
     }
 
-    function openCameraScanner(inputId) {
+    function getBarcodeFormatsForScanner() {
+      try {
+        const F = window.Html5QrcodeSupportedFormats;
+        if (!F) return undefined;
+        return [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR, F.RSS_14, F.RSS_EXPANDED].filter(v => v !== undefined);
+      } catch (e) { return undefined; }
+    }
+
+    function handleBarcodeDecoded(decodedText) {
+      const value = String(decodedText || '').trim();
+      if (!value) return;
+      if (navigator.vibrate) navigator.vibrate(100);
+      const inputElem = document.getElementById(targetSearchInputId);
+      if (inputElem) {
+        inputElem.value = value;
+        if (targetSearchInputId === 'pos-search-box') renderPosProducts();
+        else renderProducts();
+      }
+      closeCameraScanner();
+    }
+
+    async function openCameraScanner(inputId) {
       targetSearchInputId = inputId || 'search-box';
-      document.getElementById('modal-scanner').style.display = 'flex';
-      if (!html5QrScanner) { html5QrScanner = new Html5Qrcode("reader"); }
-      html5QrScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        (decodedText) => {
-          if (navigator.vibrate) navigator.vibrate(100);
-          const inputElem = document.getElementById(targetSearchInputId);
-          if (inputElem) {
-            inputElem.value = decodedText;
-            if (targetSearchInputId === 'pos-search-box') renderPosProducts();
-            else renderProducts();
-          }
-          closeCameraScanner();
-        },
-        () => {}
-      ).catch(() => { alert("يرجى إعطاء الإذن للكاميرا."); closeCameraScanner(); });
+      const modal = document.getElementById('modal-scanner');
+      const status = document.getElementById('scanner-status');
+      if (modal) modal.style.display = 'flex';
+      if (status) status.textContent = 'جاري تشغيل الكاميرا...';
+      try {
+        if (!window.Html5Qrcode) throw new Error('قارئ الباركود غير متاح حالياً.');
+        if (html5QrScanner) { try { await html5QrScanner.stop(); } catch (e) {} }
+        html5QrScanner = new Html5Qrcode('reader');
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || !cameras.length) throw new Error('لم يتم العثور على كاميرا.');
+        let cameraId = cameras[0].id;
+        const preferred = cameras.find(c => /back|rear|environment|خلف|خلفية/i.test(c.label || ''));
+        if (preferred) cameraId = preferred.id;
+        const config = { fps: 12, qrbox: { width: 290, height: 150 }, aspectRatio: 1.7777778, disableFlip: false };
+        const formats = getBarcodeFormatsForScanner();
+        if (formats && formats.length) config.formatsToSupport = formats;
+        await html5QrScanner.start(cameraId, config, handleBarcodeDecoded, () => {});
+        if (status) status.textContent = 'قرّب الباركود أو أبعده قليلاً حتى تظهر الخطوط كاملة داخل الإطار.';
+      } catch (e) {
+        if (status) status.textContent = 'تعذر تشغيل الكاميرا. استخدم زر «اختيار صورة للباركود» أسفل النافذة.';
+        alert('تعذر تشغيل قارئ الباركود بالكاميرا.\n\nالسبب: ' + (e.message || e) + '\n\nيمكنك استخدام «اختيار صورة للباركود» كبديل.');
+      }
+    }
+
+    async function scanBarcodeFromImage() {
+      const input = document.getElementById('barcode-image-input');
+      if (!input) return;
+      input.value = '';
+      input.onchange = async function() {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        try {
+          if (html5QrScanner) { try { await html5QrScanner.stop(); } catch (e) {} }
+          if (!html5QrScanner) html5QrScanner = new Html5Qrcode('reader');
+          const decoded = await html5QrScanner.scanFile(file, true);
+          handleBarcodeDecoded(decoded);
+        } catch (e) {
+          alert('لم أستطع قراءة الباركود من الصورة.\nجرّب صورة أوضح، واجعل الباركود مستقيماً وكاملاً.');
+        }
+      };
+      input.click();
     }
 
     function closeCameraScanner() {
-      if (html5QrScanner) {
-        html5QrScanner.stop().then(() => { document.getElementById('modal-scanner').style.display = 'none'; }).catch(() => { document.getElementById('modal-scanner').style.display = 'none'; });
-      } else { document.getElementById('modal-scanner').style.display = 'none'; }
+      const hide = () => { const modal = document.getElementById('modal-scanner'); if (modal) modal.style.display = 'none'; };
+      if (html5QrScanner) html5QrScanner.stop().then(hide).catch(hide); else hide();
     }
 
     function openCameraForImage(inputId) {
@@ -1244,6 +1326,134 @@
       fileInput.click();
     }
 
+    function normalizeAiDosageForm(value) {
+      const v = String(value || '').trim().toLowerCase();
+      const map = {
+        'tablet':'Tablet','tablets':'Tablet','حبوب':'Tablet','قرص':'Tablet','اقراص':'Tablet',
+        'capsule':'Capsule','capsules':'Capsule','كبسول':'Capsule','كبسولة':'Capsule','كبسولات':'Capsule',
+        'syrup':'Syrup','شراب':'Syrup',
+        'suspension':'Suspension','susp':'Suspension','معلق':'Suspension','معلّق':'Suspension',
+        'injection':'Injection','injectable':'Injection','حقن':'Injection',
+        'vial':'Vial','فيال':'Vial',
+        'ampoule':'Ampoule','amp':'Ampoule','أمبول':'Ampoule','امبول':'Ampoule',
+        'cream':'Cream','كريم':'Cream',
+        'ointment':'Ointment','مرهم':'Ointment',
+        'sachet':'Sachet','sachets':'Sachet','ساشيت':'Sachet','ساشه':'Sachet','ساشية':'Sachet',
+        'gel':'Gel','جل':'Gel',
+        'drops':'Drops','drop':'Drops','قطرات':'Drops','قطرة':'Drops'
+      };
+      return map[v] || '';
+    }
+
+    function showAiMedicineLoading(show, text) {
+      let el = document.getElementById('ai-medicine-loading');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'ai-medicine-loading';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        el.innerHTML = '<div style="background:#fff;border-radius:16px;padding:20px 24px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.2);font-weight:700;min-width:220px;"><div style="font-size:30px;margin-bottom:8px;">🤖📷</div><div id="ai-medicine-loading-text">جاري قراءة الدواء...</div></div>';
+        document.body.appendChild(el);
+      }
+      const t = document.getElementById('ai-medicine-loading-text');
+      if (t) t.textContent = text || 'جاري قراءة الدواء من الصورة...';
+      el.style.display = show ? 'flex' : 'none';
+    }
+
+    function compressMedicineImage(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) return reject(new Error('لم يتم اختيار صورة'));
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('تعذر قراءة الصورة'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const maxSide = 900;
+            const scale = Math.min(1, maxSide / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+            canvas.height = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+            resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+          };
+          img.onerror = () => reject(new Error('تعذر فتح الصورة'));
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function analyzeMedicineImageFile(file, mode) {
+      try {
+        showAiMedicineLoading(true, mode === 'search' ? 'جاري التعرف على الدواء والبحث عنه...' : 'جاري قراءة بيانات الدواء من الصورة...');
+        const image = await compressMedicineImage(file);
+        const result = await postToApi({
+          action: 'gemini_analyze_medicine_image',
+          imageBase64: image.base64,
+          mimeType: image.mimeType,
+          mode: mode
+        });
+        const m = result.medicine || {};
+        const name = String(m.name || '').trim();
+        const barcode = String(m.barcode || '').trim();
+        if (!name && !barcode) throw new Error('لم أستطع قراءة اسم الدواء أو الباركود بوضوح. جرّب صورة أوضح وأقرب.');
+
+        if (mode === 'search') {
+          const searchValue = barcode || name;
+          const input = document.getElementById('search-box');
+          if (input) {
+            input.value = searchValue;
+            renderProducts();
+            const exact = (inventory || []).some(p =>
+              (barcode && String(p.barcode || '').trim() === barcode) ||
+              (name && String(p.name || '').trim().toLowerCase() === name.toLowerCase())
+            );
+            if (!exact) alert('تم التعرف على: ' + (name || barcode) + '\nلكن لم أجد مادة مطابقة تماماً في المخزن.');
+          }
+        } else {
+          const nameEl = document.getElementById('in-name');
+          const companyEl = document.getElementById('in-company');
+          const barcodeEl = document.getElementById('in-barcode');
+          const formEl = document.getElementById('in-form');
+          if (nameEl && name) nameEl.value = name;
+          if (companyEl && m.company) companyEl.value = String(m.company).trim();
+          if (barcodeEl && barcode) barcodeEl.value = barcode;
+          const normalizedForm = normalizeAiDosageForm(m.dosage_form);
+          if (formEl && normalizedForm) formEl.value = normalizedForm;
+
+          const extra = document.getElementById('ai-medicine-extra-info');
+          if (extra) {
+            const parts = [];
+            if (m.active_ingredient) parts.push('<b>المادة الفعالة:</b> ' + escapeHtml(m.active_ingredient));
+            if (m.strength) parts.push('<b>التركيز:</b> ' + escapeHtml(m.strength));
+            if (m.pack_size) parts.push('<b>حجم العبوة:</b> ' + escapeHtml(m.pack_size));
+            if (m.confidence !== undefined && m.confidence !== '') parts.push('<b>الثقة:</b> ' + Math.round(Number(m.confidence) * 100) + '%');
+            if (m.notes) parts.push('<b>ملاحظة:</b> ' + escapeHtml(m.notes));
+            extra.innerHTML = parts.length ? '🤖 <b>معلومات قرأها Gemini — راجعها قبل الحفظ:</b><br>' + parts.join(' &nbsp; | &nbsp; ') : '';
+            extra.style.display = parts.length ? 'block' : 'none';
+          }
+          alert('تمت قراءة بيانات الدواء وملء الحقول. راجعها ثم اضغط حفظ إذا كانت صحيحة.');
+        }
+      } catch (e) {
+        alert('تعذر تحليل صورة الدواء:\n' + (e.message || e));
+      } finally {
+        showAiMedicineLoading(false);
+      }
+    }
+
+    function openAiMedicineCamera(mode) {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.capture = 'environment';
+      fileInput.onchange = function(e) {
+        const file = e.target.files && e.target.files[0];
+        if (file) analyzeMedicineImageFile(file, mode || 'search');
+      };
+      fileInput.click();
+    }
+
     function smartDetectForm(name, rawForm) {
       if (rawForm && rawForm !== 'Tablet' && rawForm.trim() !== '') return rawForm.trim();
       if (!name) return 'Tablet';
@@ -1254,6 +1464,11 @@
       if (low.includes('susp') || low.includes('معلق')) return 'Suspension';
       if (low.includes('inj') || low.includes('حقن')) return 'Injection';
       if (low.includes('caps') || low.includes('كبسول')) return 'Capsule';
+      if (low.includes('ointment') || low.includes('مرهم')) return 'Ointment';
+      if (low.includes('sachet') || low.includes('sache') || low.includes('ساشيت') || low.includes('ساشه') || low.includes('ساشية')) return 'Sachet';
+      if (low.includes('cream') || low.includes('كريم')) return 'Cream';
+      if (low.includes('gel') || low.includes('جل')) return 'Gel';
+      if (low.includes('drop') || low.includes('قطر')) return 'Drops';
       if (low.includes('tab') || low.includes('حبوب')) return 'Tablet';
       return rawForm || 'Tablet';
     }
@@ -1313,6 +1528,7 @@
       if (localStock) { try { inventory = JSON.parse(localStock); } catch(e){} }
       const localOrders = localStorage.getItem('samo_orders_v39');
       if (localOrders) { try { ordersList = JSON.parse(localOrders); } catch(e){} }
+      loadCartState();
       loadPrintSettings();
 
       populateCompanyDropdown();
@@ -1390,13 +1606,14 @@
         const res = await fetch(API_URL, { cache: 'no-store' });
         const data = await res.json();
         if (data && data.success) {
+          const pendingLocalProducts = (inventory || []).filter(p => p && p._syncPending);
           if (data.products && data.products.length > 0) {
             inventory = data.products.map(p => ({
               id: String(p.id || ''),
               name: String(p.name || '').trim(),
               image: p.image || '',
               company: String(p.company || '').trim(),
-              form: smartDetectForm(p.name, p.form),
+              form: smartDetectForm(p.name, p.form || ((inventory || []).find(x => (p.barcode && String(x.barcode || '').trim() === String(p.barcode || '').trim()) || String(x.name || '').trim().toLowerCase() === String(p.name || '').trim().toLowerCase()) || {}).form),
               barcode: String(p.barcode || '').trim(),
               quantity: parseAppNumber(p.quantity),
               minQty: parseAppNumber(p.minQty) || 5,
@@ -1405,7 +1622,16 @@
               bonus: parseAppNumber(p.bonus),
               expiryDate: p.expiryDate || ''
             })).filter(p => p.name);
+            // لا نحذف مادة فشل ترحيلها من الجهاز: نحتفظ بها محلياً حتى يتأكد صاحب المذخر من الشيت.
+            pendingLocalProducts.forEach(localP => {
+              const existsRemotely = inventory.some(remoteP =>
+                (localP.barcode && remoteP.barcode && String(localP.barcode).trim() === String(remoteP.barcode).trim()) ||
+                String(localP.name || '').trim().toLowerCase() === String(remoteP.name || '').trim().toLowerCase()
+              );
+              if (!existsRemotely) inventory.unshift(localP);
+            });
             localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+            cleanCartState();
           }
           if (Array.isArray(data.staffNames)) {
             const remote = data.staffNames.map(String).map(x => x.trim()).filter(Boolean);
@@ -1437,6 +1663,12 @@
       }
     }
 
+    function showPendingSyncInfo() {
+      const names = (inventory || []).filter(p => p && p._syncPending).map(p => p.name).filter(Boolean);
+      if (!names.length) return alert('لا توجد مواد معلقة حالياً.');
+      alert('المواد التي لم يتأكد ترحيلها إلى الشيت:\n\n• ' + names.join('\n• ') + '\n\nلا تضفها مرة ثانية قبل التحقق من ورقة Products حتى لا تتكرر.');
+    }
+
     function renderAlerts() {
       const container = document.getElementById('alerts-container');
       if (!container) return;
@@ -1448,6 +1680,10 @@
         if (p.quantity <= (p.minQty || 5)) lowCount++;
       });
       let html = '';
+      const pendingProductsCount = (inventory || []).filter(p => p && p._syncPending).length;
+      if (pendingProductsCount > 0) {
+        html += `<div class="alert-strip alert-sync"><span>☁️ توجد ${pendingProductsCount} مادة محفوظة محلياً ولم يتأكد ترحيلها إلى الشيت.</span><button class="btn btn-sec" style="padding:4px 8px;font-size:10px;" onclick="showPendingSyncInfo()">عرض التفاصيل</button></div>`;
+      }
       if (expiredCount > 0) html += `<div class="alert-strip alert-expired"><span>⚠️ يوجد ${expiredCount} مادة منتهية الصلاحية بالمخزن!</span></div>`;
       if (nearCount > 0) html += `<div class="alert-strip alert-near"><span>⏳ يوجد ${nearCount} مادة قاربت على الانتهاء</span></div>`;
       if (lowCount > 0) html += `<div class="alert-strip alert-low"><span>📦 يوجد ${lowCount} مادة نواقص بالمخزن</span></div>`;
@@ -1480,6 +1716,7 @@
     }
 
     function renderProducts() {
+      cleanCartState();
       const container = document.getElementById('prod-list-container');
       if (!container) return;
       const q = document.getElementById('search-box').value.trim().toLowerCase();
@@ -1575,6 +1812,8 @@
     function setPosCartQty(prodId, value) {
       const prod = inventory.find(i => i.id === prodId);
       if (!prod) return;
+      const stock = Math.floor(Number(prod.quantity) || 0);
+      if (stock <= 0) { delete cartMap[prodId]; saveCartState(); renderProducts(); return alert('هذه المادة نافدة من المخزن ولا يمكن إضافتها للسلة.'); }
       let qty = Math.floor(Number(value));
       if (!Number.isFinite(qty) || qty < 1) { delete posCartMap[prodId]; }
       else if (qty <= Number(prod.quantity || 0)) { posCartMap[prodId] = qty; }
@@ -1657,6 +1896,37 @@
       setMainTab('log');
     }
 
+    const CART_STORAGE_KEY = 'samo_cart_safe_v1';
+
+    function saveCartState() {
+      try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartMap || {})); } catch (e) {}
+      updateBadgeDot();
+    }
+
+    function cleanCartState() {
+      let changed = false;
+      const cleaned = {};
+      Object.keys(cartMap || {}).forEach(id => {
+        const prod = inventory.find(i => String(i.id) === String(id));
+        const stock = prod ? Math.floor(Number(prod.quantity) || 0) : 0;
+        const wanted = Math.floor(Number(cartMap[id]) || 0);
+        if (prod && stock > 0 && wanted > 0) {
+          const safeQty = Math.min(wanted, stock);
+          cleaned[id] = safeQty;
+          if (safeQty !== wanted) changed = true;
+        } else changed = true;
+      });
+      cartMap = cleaned;
+      if (changed) saveCartState();
+      updateBadgeDot();
+    }
+
+    function loadCartState() {
+      try { const raw = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '{}'); cartMap = raw && typeof raw === 'object' ? raw : {}; }
+      catch (e) { cartMap = {}; }
+      cleanCartState();
+    }
+
     function setCartQty(prodId, value) {
       const prod = inventory.find(i => i.id === prodId);
       if (!prod) return;
@@ -1668,16 +1938,20 @@
         if (qty > 0) cartMap[prodId] = qty;
         else delete cartMap[prodId];
       }
+      saveCartState();
       renderProducts();
     }
 
     function modifyCartQty(prodId, delta) {
       const prod = inventory.find(i => i.id === prodId);
       if (!prod) return;
-      const cur = cartMap[prodId] || 0;
+      const stock = Math.floor(Number(prod.quantity) || 0);
+      if (stock <= 0) { delete cartMap[prodId]; saveCartState(); renderProducts(); return alert('هذه المادة نافدة من المخزن ولا يمكن إضافتها للسلة.'); }
+      const cur = Math.floor(Number(cartMap[prodId]) || 0);
       const next = cur + delta;
       if (next <= 0) delete cartMap[prodId];
-      else if (next <= prod.quantity) cartMap[prodId] = next;
+      else if (next <= stock) cartMap[prodId] = next;
+      saveCartState();
       renderProducts();
     }
 
@@ -1720,13 +1994,15 @@
       if (!item) return;
       const current = Number(cartMap[prodId] || 0);
       const next = current + Number(delta || 0);
-      if (next <= 0) {
+      const stock = Math.floor(Number(item.quantity) || 0);
+      if (stock <= 0) {
         delete cartMap[prodId];
-      } else if (next <= item.quantity) {
+      } else if (next <= stock) {
         cartMap[prodId] = next;
       } else {
         return alert("الكمية المطلوبة تتجاوز المتوفر!");
       }
+      saveCartState();
       renderProducts();
       refreshCheckoutModal();
     }
@@ -1735,19 +2011,22 @@
       const item = inventory.find(i => i.id === prodId);
       if (!item) return;
       let qty = Math.floor(Number(value));
-      if (!Number.isFinite(qty) || qty < 1) {
+      const stock = Math.floor(Number(item.quantity) || 0);
+      if (!Number.isFinite(qty) || qty < 1 || stock <= 0) {
         delete cartMap[prodId];
-      } else if (qty <= item.quantity) {
+      } else if (qty <= stock) {
         cartMap[prodId] = qty;
       } else {
         alert("الكمية المطلوبة تتجاوز المتوفر!");
       }
+      saveCartState();
       renderProducts();
       refreshCheckoutModal();
     }
 
     function removeCheckoutItem(prodId) {
       delete cartMap[prodId];
+      saveCartState();
       renderProducts();
       if (Object.keys(cartMap).length === 0) {
         closeSendModal();
@@ -1763,6 +2042,17 @@
       const phone = document.getElementById('order-ph-phone').value.trim();
       if (!ph) return alert("يرجى كتابة اسم الصيدلية");
       if (isAdminUnlocked && !activeStaffName) return alert("يرجى اختيار الموظف المجهز من الأعلى!");
+
+      cleanCartState();
+      const invalidCart = Object.keys(cartMap).filter(id => {
+        const p = inventory.find(i => String(i.id) === String(id));
+        return !p || Math.floor(Number(p.quantity) || 0) <= 0 || Math.floor(Number(cartMap[id]) || 0) > Math.floor(Number(p.quantity) || 0);
+      });
+      if (invalidCart.length) {
+        cleanCartState();
+        return alert('تم تحديث المخزون، وهناك مادة لم تعد متوفرة بالكمية المطلوبة. راجع السلة ثم أرسل الطلب من جديد.');
+      }
+      if (Object.keys(cartMap).length === 0) return alert('السلة فارغة بعد التحقق من المخزون.');
 
       const newItems = Object.keys(cartMap).map(id => {
         const p = inventory.find(i => i.id === id);
@@ -1837,7 +2127,10 @@
         localStorage.setItem('samo_orders_v39',JSON.stringify(ordersList));
         closeInspectModal(); renderIncomingOrders(); renderOrders(); await loadRemoteData();
         alert('تم اعتماد الطلبية وخصم الكميات المعتمدة من المخزن.');
-      } catch(e) { alert('تعذر اعتماد الطلبية: '+e.message); }
+      } catch(e) {
+        const msg = (e && e.message) ? e.message : String(e || 'خطأ غير معروف');
+        alert('تعذر اعتماد الطلبية.\n\nالسبب: ' + msg);
+      }
     }
 
     function renderOrders() {
@@ -2045,7 +2338,7 @@
       if (t === 'log') { renderOrders(); }
     }
 
-    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; }
+    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
     function closeAddModal() { document.getElementById('modal-add-item').style.display = 'none'; }
     function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
     function closeCameraScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
@@ -2147,8 +2440,9 @@
       };
       if (!p.name) return alert("يرجى كتابة اسم المادة.");
 
-      p.id = 'PROD-LOCAL-' + Date.now();
+      p.id = 'PROD-LOCAL-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
       p.totalPrice = p.quantity * p.price;
+      p._syncPending = true;
       inventory.unshift(p);
       localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
       populateCompanyDropdown();
@@ -2160,16 +2454,22 @@
 
       try {
         await postToApi({ action: 'add_product', product: p });
+        const localAdded = inventory.find(x => x.id === p.id);
+        if (localAdded) delete localAdded._syncPending;
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
         await loadRemoteData();
         alert("تمت إضافة المادة وترحيلها إلى الشيت.");
       } catch (e) {
-        alert("تمت إضافة المادة محلياً، لكن تعذر ترحيلها إلى الشيت.");
+        const localAdded = inventory.find(x => x.id === p.id);
+        if (localAdded) localAdded._syncPending = true;
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+        alert("تم حفظ المادة على هذا الجهاز، لكن لم يتأكد وصولها إلى الشيت.\n\nالسبب: " + (e.message || e) + "\n\nلا تعِد الإضافة مرة ثانية حتى تتأكد من الشيت، لتجنب تكرار المادة.");
       }
     }
 
     let currentBarcodePrintData = null;
 
-const PRINT_BRIDGE_URL = 'http://127.0.0.1:8765';
+    const PRINT_BRIDGE_URL = 'http://127.0.0.1:8765';
     const PRINT_SETTINGS_KEY = 'samo_print_settings_v1';
     const DEFAULT_PRINT_SETTINGS = {
       width: 50, height: 30, copies: 1, orientation: 'landscape', printer: ''
@@ -2329,7 +2629,8 @@ const PRINT_BRIDGE_URL = 'http://127.0.0.1:8765';
       const s = savePrintSettings();
       const win = window.open('', '_blank', 'width=500,height=500');
       if (!win) return alert('يرجى السماح بفتح نافذة الطباعة.');
-      win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>باركود</title><style>@page{size:${s.width}mm ${s.height}mm;margin:0}html,body{margin:0;padding:0;width:${s.width}mm;height:${s.height}mm}body{font-family:Arial;text-align:center;display:flex;align-items:center;justify-content:center}.label{width:96%;overflow:hidden}.name{font-weight:700;font-size:11px}.bar{margin:3px 0}.num{font-family:monospace;font-size:10px;font-weight:700}.price{font-size:9px;font-weight:700}</style></head><body><div class="label"><div class="name">${escapeHtml(d.name)}</div><div class="bar">${escapeHtml(d.barcode || '000000000')}</div><div class="num">${escapeHtml(d.barcode || '')}</div><div class="price">${d.price.toLocaleString()} د.ع</div></div></body></html>`);
+      const safeBarcode = escapeHtml(d.barcode || '000000000');
+      win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>باركود</title><style>@page{size:${s.width}mm ${s.height}mm;margin:0}html,body{margin:0;padding:0;width:${s.width}mm;height:${s.height}mm}body{font-family:Arial;text-align:center;display:flex;align-items:center;justify-content:center;overflow:hidden}.label{width:96%;height:96%;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}.name{font-weight:700;font-size:11px;line-height:1.1;max-width:96%;white-space:nowrap;overflow:hidden}.bar{margin:2px 0;max-width:96%}.bar svg{max-width:100%;height:auto}.num{font-family:monospace;font-size:10px;font-weight:700}.price{font-size:9px;font-weight:700}</style></head><body><div class="label"><div class="name">${escapeHtml(d.name)}</div><div class="bar"><svg id="b"></svg></div><div class="num">${safeBarcode}</div><div class="price">${d.price.toLocaleString()} د.ع</div></div><script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script><script>try{JsBarcode('#b','${safeBarcode}',{format:'CODE128',displayValue:false,height:45,width:1.5,margin:1});}catch(e){}<\/script></body></html>`);
       win.document.close(); win.focus(); setTimeout(()=>win.print(),250);
     }
 
