@@ -2066,10 +2066,11 @@
 
     async function setInventoryQty(prodId,value){
       if(!isAdminUnlocked)return alert('تعديل المخزون متاح فقط لصاحب المذخر.');
-      const item=inventory.find(i=>String(i.id)===String(prodId)); if(!item)return;
-      const qty=Math.max(0,Math.floor(Number(value))); if(!Number.isFinite(qty))return;
-      item.quantity=qty; item.totalPrice=qty*Number(item.price||0); localStorage.setItem('samo_inventory_v39',JSON.stringify(inventory)); renderProducts(); renderAlerts();
-      try{await postToApi({action:'update_product',product:item});await loadRemoteData();}catch(e){alert('تم تغيير العدد محلياً لكن تعذر مزامنته مع الشيت.');}
+      const item=inventory.find(i=>String(i.id)===String(prodId));if(!item)return;
+      const qty=Math.max(0,Math.floor(Number(value)));if(!Number.isFinite(qty))return;const oldQty=Math.max(0,Math.floor(Number(item.quantity)||0));if(qty===oldQty)return;
+      const updated={...item,quantity:qty,totalPrice:qty*Number(item.price||0)};
+      try{await postToApi({action:'update_product',product:updated,stockOperation:{mode:'set',amount:Math.abs(qty-oldQty),reason:'تعديل يدوي صريح لرصيد المخزون'}});Object.assign(item,updated);localStorage.setItem('samo_inventory_v39',JSON.stringify(inventory));renderProducts();renderAlerts();await loadRemoteData();}
+      catch(e){alert('لم يتم تغيير رصيد الشيت. لم أغيّر الرصيد المحلي أيضاً.\n\n'+(e.message||e));}
     }
     function changeInventoryQty(prodId,delta){const item=inventory.find(i=>String(i.id)===String(prodId));if(!item)return;setInventoryQty(prodId,Number(item.quantity||0)+Number(delta||0));}
 
@@ -2844,38 +2845,10 @@
       if (el) el.style.display = 'none';
     }
 
-    async function saveEditedMedicine() {
-      if (!isAdminUnlocked) return alert("هذه العملية متاحة فقط لصاحب المذخر.");
-      const id = document.getElementById('edit-prod-id').value;
-      const item = inventory.find(i => String(i.id) === String(id));
-      if (!item) return alert("لم يتم العثور على المادة.");
-
-      item.name = document.getElementById('edit-name').value.trim();
-      item.image = document.getElementById('edit-image').value.trim();
-      item.company = document.getElementById('edit-company').value.trim();
-      item.form = document.getElementById('edit-form').value.trim() || 'Tablet';
-      item.barcode = document.getElementById('edit-barcode').value.trim();
-      item.quantity = Math.max(0, Number(document.getElementById('edit-qty').value) || 0);
-      item.minQty = Math.max(0, Number(document.getElementById('edit-min-qty').value) || 5);
-      item.price = Math.max(0, Number(document.getElementById('edit-price').value) || 0);
-      item.bonus = Math.max(0, Number(document.getElementById('edit-bonus').value) || 0);
-      item.expiryDate = document.getElementById('edit-exp').value.trim();
-
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      populateReportCompanyDropdown();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-      closeEditModal();
-
-      try {
-        await postToApi({ action: 'update_product', product: item });
-        await loadRemoteData();
-        alert("تم حفظ تعديل المادة ومزامنته مع الشيت.");
-      } catch (e) {
-        alert("تم حفظ التعديل محلياً، لكن تعذر ترحيله إلى الشيت.");
-      }
+    async function saveEditedMedicine(){
+      if(!isAdminUnlocked)return alert("هذه العملية متاحة فقط لصاحب المذخر.");const id=document.getElementById('edit-prod-id').value,item=inventory.find(i=>String(i.id)===String(id));if(!item)return alert("لم يتم العثور على المادة.");const oldQty=Math.max(0,Math.floor(Number(item.quantity)||0));
+      const updated={...item,name:document.getElementById('edit-name').value.trim(),image:document.getElementById('edit-image').value.trim(),company:document.getElementById('edit-company').value.trim(),form:document.getElementById('edit-form').value.trim()||'Tablet',barcode:document.getElementById('edit-barcode').value.trim(),quantity:Math.max(0,Math.floor(Number(document.getElementById('edit-qty').value)||0)),minQty:Math.max(0,Number(document.getElementById('edit-min-qty').value)||5),price:Math.max(0,Number(document.getElementById('edit-price').value)||0),bonus:Math.max(0,Number(document.getElementById('edit-bonus').value)||0),expiryDate:document.getElementById('edit-exp').value.trim()};updated.totalPrice=updated.quantity*updated.price;const payload={action:'update_product',product:updated};if(updated.quantity!==oldQty)payload.stockOperation={mode:'set',amount:Math.abs(updated.quantity-oldQty),reason:'تعديل يدوي صريح لرصيد المخزون من نافذة تعديل المادة'};
+      try{await postToApi(payload);Object.assign(item,updated);localStorage.setItem('samo_inventory_v39',JSON.stringify(inventory));populateCompanyDropdown();populateReportCompanyDropdown();renderAlerts();renderProducts();renderPosProducts();closeEditModal();await loadRemoteData();alert("تم حفظ تعديل المادة ومزامنته مع الشيت.");}catch(e){alert("لم يتم حفظ التعديل في الشيت، ولم أغيّر النسخة المحلية.\n\nالسبب: "+(e.message||e));}
     }
 
     async function deleteMedicine(prodId) {
@@ -2901,47 +2874,9 @@
       }
     }
 
-    async function saveNewMedicine() {
-      if (!isAdminUnlocked) return alert("هذه العملية متاحة فقط لصاحب المذخر.");
-      const p = {
-        name: document.getElementById('in-name').value.trim(),
-        image: document.getElementById('in-image').value.trim(),
-        company: document.getElementById('in-company').value.trim(),
-        form: document.getElementById('in-form').value,
-        quantity: Math.max(0, Number(document.getElementById('in-qty').value) || 0),
-        minQty: Math.max(0, Number(document.getElementById('in-min-qty').value) || 5),
-        price: Math.max(0, Number(document.getElementById('in-price').value) || 0),
-        bonus: Math.max(0, Number(document.getElementById('in-bonus').value) || 0),
-        expiryDate: document.getElementById('in-exp').value.trim(),
-        barcode: document.getElementById('in-barcode').value.trim()
-      };
-      if (!p.name) return alert("يرجى كتابة اسم المادة.");
-
-      p.id = 'PROD-LOCAL-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
-      p.totalPrice = p.quantity * p.price;
-      p._syncPending = true;
-      inventory.unshift(p);
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      populateReportCompanyDropdown();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-      closeAddModal();
-
-      try {
-        await postToApi({ action: 'add_product', product: p });
-        const localAdded = inventory.find(x => x.id === p.id);
-        if (localAdded) delete localAdded._syncPending;
-        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-        await loadRemoteData();
-        alert("تمت إضافة المادة وترحيلها إلى الشيت.");
-      } catch (e) {
-        const localAdded = inventory.find(x => x.id === p.id);
-        if (localAdded) localAdded._syncPending = true;
-        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-        alert("تم حفظ المادة على هذا الجهاز، لكن لم يتأكد وصولها إلى الشيت.\n\nالسبب: " + (e.message || e) + "\n\nلا تعِد الإضافة مرة ثانية حتى تتأكد من الشيت، لتجنب تكرار المادة.");
-      }
+    async function saveNewMedicine(){
+      if(!isAdminUnlocked)return alert("هذه العملية متاحة فقط لصاحب المذخر.");const p={name:document.getElementById('in-name').value.trim(),image:document.getElementById('in-image').value.trim(),company:document.getElementById('in-company').value.trim(),form:document.getElementById('in-form').value,quantity:Math.max(0,Number(document.getElementById('in-qty').value)||0),minQty:Math.max(0,Number(document.getElementById('in-min-qty').value)||5),price:Math.max(0,Number(document.getElementById('in-price').value)||0),bonus:Math.max(0,Number(document.getElementById('in-bonus').value)||0),expiryDate:document.getElementById('in-exp').value.trim(),barcode:document.getElementById('in-barcode').value.trim()};if(!p.name)return alert("يرجى كتابة اسم المادة.");p.id='PROD-LOCAL-'+Date.now()+'-'+Math.floor(Math.random()*100000);p.totalPrice=p.quantity*p.price;
+      try{await postToApi({action:'add_product',product:p});closeAddModal();await loadRemoteData();alert("تمت إضافة المادة بنجاح. تم إنشاء ProductID ثابت لها في الشيت.");}catch(e){alert("لم تتم إضافة المادة إلى الشيت، لذلك لم أضف نسخة محلية أيضاً.\n\nالسبب: "+(e.message||e));}
     }
 
     let currentBarcodePrintData = null;
@@ -3266,7 +3201,7 @@
       if (!Number.isFinite(qty) || qty < 1 || qty > Number(item.quantity || 0)) return alert("كمية الإرجاع غير صحيحة.");
       if (!confirm(`إرجاع ${qty} من مادة ${item.name} إلى المخزن؟`)) return;
       try {
-        await postToApi({ action: 'return_order_item', orderNumber: order.orderNumber, item: { name: item.name, barcode: item.barcode || '', quantity: qty } });
+        await postToApi({ action: 'return_order_item', orderNumber: order.orderNumber, item: { id: item.id || '', name: item.name, barcode: item.barcode || '', quantity: qty } });
         item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
         // لا نحذف المادة من القائمة المسلمة؛ تبقى ظاهرة بكمية 0 بعد الإرجاع الكامل.
         recalcInspectOrder();
