@@ -500,6 +500,14 @@
       border: 2px solid #fff;
     }
 
+    /* النوافذ المنبثقة أعلى من محرك البحث والقوائم دائماً */
+    .modal-overlay {
+      z-index: 10000 !important;
+    }
+    .modal-overlay * {
+      z-index: auto;
+    }
+
     .modal-overlay {
       position: fixed !important;
       inset: 0 !important;
@@ -1248,7 +1256,7 @@
       });
     }
 
-    const API_URL = "https://script.google.com/macros/s/AKfycbwgE2XZAq88ETjSM19APsdJHVPkCV9RhAyBpmhV3J3jCWGmixaARgm8wD0yn5jaaTxD/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxz7qQoyfF9_PhniIA63Gtqq4cvfgG2gdzu9TLqeLLjGhqanFKxmW3QXrCVNtuaGnMu/exec";
 
     function parseAppNumber(value) {
       if (value === null || value === undefined || value === '') return 0;
@@ -1317,6 +1325,47 @@
     const USER_PHARMACY_NAME_KEY = 'samo_user_pharmacy_name_v1';
     const USER_PHARMACY_PHONE_KEY = 'samo_user_pharmacy_phone_v1';
     const USER_DELETED_ORDERS_KEY = 'samo_deleted_my_orders_v1';
+    const PENDING_ORDER_DELETES_KEY = 'samo_pending_order_deletes_v1';
+
+    function getPendingOrderDeletes() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(PENDING_ORDER_DELETES_KEY) || '[]');
+        return new Set(Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : []);
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function savePendingOrderDeletes(set) {
+      try {
+        localStorage.setItem(PENDING_ORDER_DELETES_KEY, JSON.stringify(Array.from(set || [])));
+      } catch (e) {}
+    }
+
+    function markOrderDeletePending(orderNumber) {
+      const set = getPendingOrderDeletes();
+      if (orderNumber) set.add(String(orderNumber).trim());
+      savePendingOrderDeletes(set);
+    }
+
+    function unmarkOrderDeletePending(orderNumber) {
+      const set = getPendingOrderDeletes();
+      set.delete(String(orderNumber || '').trim());
+      savePendingOrderDeletes(set);
+    }
+
+    async function syncPendingOrderDeletes() {
+      const set = getPendingOrderDeletes();
+      const numbers = Array.from(set);
+      for (const orderNumber of numbers) {
+        try {
+          await postToApi({ action: 'delete_order', orderNumber });
+          unmarkOrderDeletePending(orderNumber);
+        } catch (e) {
+          // يبقى في قائمة الانتظار للمحاولة التالية.
+        }
+      }
+    }
 
     function getLocalUserId() {
       let id = localStorage.getItem(USER_ID_KEY);
@@ -2101,6 +2150,7 @@
       }
 
       window.addEventListener('online', () => { triggerSync(); });
+      syncPendingOrderDeletes().catch(() => {});
       loadRemoteData();
     }
 
@@ -2152,6 +2202,7 @@
     async function triggerSync() {
       const lbl = document.getElementById('conn-lbl');
       if (lbl) lbl.innerText = "جاري مزامنة السحابة...";
+      await syncPendingOrderDeletes();
       await loadRemoteData();
       alert("تمت المزامنة بنجاح!");
     }
@@ -2198,8 +2249,11 @@
             localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
             populateStaffDropdown();
           }
-          const remoteOrders = Array.isArray(data.orders) ? data.orders.slice() : [];
-          const remotePendingOrders = Array.isArray(data.pendingOrders) ? data.pendingOrders.map(o => ({ ...o, _remotePending: true })) : [];
+          const pendingDeletes = getPendingOrderDeletes();
+          const remoteOrders = (Array.isArray(data.orders) ? data.orders.slice() : [])
+            .filter(o => !pendingDeletes.has(String(o && o.orderNumber || '').trim()));
+          const remotePendingOrders = (Array.isArray(data.pendingOrders) ? data.pendingOrders.map(o => ({ ...o, _remotePending: true })) : [])
+            .filter(o => !pendingDeletes.has(String(o && o.orderNumber || '').trim()));
           ordersList = mergeOrdersPreservingLocal(remoteOrders.concat(remotePendingOrders));
           saveOrdersLocal();
         }
@@ -2815,18 +2869,23 @@
       if (!orderNumber) return alert('رقم الطلب غير موجود.');
       if (!confirm(`هل أنت متأكد من حذف الطلبية ${orderNumber} نهائياً؟\n\nلن يتم خصم أو إعادة أي كمية من المخزون.`)) return;
 
-      try {
-        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
-        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
-        saveOrdersLocal();
-        closeInspectModal();
-        renderIncomingOrders();
-        renderOrders();
-        await loadRemoteData();
-        alert('تم حذف الطلبية نهائياً قبل الاعتماد.');
-      } catch (e) {
-        alert('لم يتم حذف الطلبية. لم أغيّر السجل المحلي.\n\nالسبب: ' + (e && e.message ? e.message : e));
-      }
+      // حذف فوري من الشاشة، ثم ترحيل الحذف إلى الخادم في الخلفية.
+      markOrderDeletePending(orderNumber);
+      ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+      saveOrdersLocal();
+      closeInspectModal();
+      renderIncomingOrders();
+      renderOrders();
+
+      // إرسال الحذف في الخلفية بدون تعطيل المستخدم.
+      postToApi({ action: 'delete_order', orderNumber })
+        .then(() => {
+          unmarkOrderDeletePending(orderNumber);
+          loadRemoteData().catch(() => {});
+        })
+        .catch(() => {});
+
+      alert('تم حذف الطلبية من القائمة فوراً، ويجري تثبيت الحذف نهائياً.');
     }
 
     async function approveIncomingOrder(idx) {
@@ -2939,17 +2998,23 @@
         return;
       }
 
-      try {
-        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
-        markMyOrderDeleted(orderNumber);
-        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
-        saveOrdersLocal();
-        renderMyOrders();
-        renderIncomingOrders();
-        alert('تم حذف الطلبية قبل اعتمادها.');
-      } catch (e) {
-        alert('تعذر حذف الطلبية قيد المراجعة.\n\nالسبب: ' + (e.message || e));
-      }
+      // حذف فوري من «طلباتي» ومن «الطلبيات الواردة»، مع إبقاء الحذف بالخادم في طابور حتى ينجح.
+      markMyOrderDeleted(orderNumber);
+      markOrderDeletePending(orderNumber);
+      ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+      saveOrdersLocal();
+      renderMyOrders();
+      renderIncomingOrders();
+      closeInspectModal();
+
+      postToApi({ action: 'delete_order', orderNumber })
+        .then(() => {
+          unmarkOrderDeletePending(orderNumber);
+          loadRemoteData().catch(() => {});
+        })
+        .catch(() => {});
+
+      alert('تم حذف الطلبية قبل الاعتماد فوراً، ويجري تثبيت الحذف نهائياً.');
     }
 
     function renderOrders() {
