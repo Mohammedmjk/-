@@ -501,15 +501,21 @@
     }
 
     .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background: rgba(0,0,0,0.42);
       backdrop-filter: blur(4px);
       display: none;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
-      z-index: 100;
+      padding: 12px;
+      z-index: 2147483000 !important;
+      isolation: isolate;
     }
+    .modal-overlay.is-open { display: flex !important; }
+    .modal-overlay .modal-sheet { position: relative; z-index: 2147483001 !important; }
     .modal-sheet {
       background: #ffffff;
       width: 100%;
@@ -583,7 +589,7 @@
       flex: 0 0 auto;
       position: relative !important;
       top: auto !important;
-      z-index: 1000 !important;
+      z-index: 10 !important;
     }
 
     body > .tabs-bar {
@@ -606,7 +612,7 @@
       flex: 0 0 auto;
       position: relative !important;
       top: auto !important;
-      z-index: 1000 !important;
+      z-index: 2 !important;
       background: var(--ios-bg);
     }
 
@@ -1060,9 +1066,10 @@
         <button class="btn btn-sec" onclick="closeInspectModal()">إغلاق</button>
       </div>
       <div id="inspect-order-items-box" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;"></div>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-danger" style="display:none; padding: 12px;" id="inspect-delete-btn" onclick="deleteIncomingOrder(currentInspectingOrderIndex)">🗑️ حذف الطلب نهائياً</button>
         <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" id="inspect-save-btn" onclick="approveAndSignOrder()">اعتماد وتجهيز ✓</button>
-        <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إلغاء</button>
+        <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إغلاق</button>
       </div>
     </div>
   </div>
@@ -1309,6 +1316,7 @@
     const USER_ID_KEY = 'samo_user_id_v1';
     const USER_PHARMACY_NAME_KEY = 'samo_user_pharmacy_name_v1';
     const USER_PHARMACY_PHONE_KEY = 'samo_user_pharmacy_phone_v1';
+    const USER_DELETED_ORDERS_KEY = 'samo_deleted_my_orders_v1';
 
     function getLocalUserId() {
       let id = localStorage.getItem(USER_ID_KEY);
@@ -1339,6 +1347,33 @@
 
     function saveOrdersLocal() {
       try { localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList || [])); } catch (e) {}
+    }
+
+    function getDeletedMyOrderSet() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(USER_DELETED_ORDERS_KEY) || '[]');
+        return new Set(Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : []);
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function saveDeletedMyOrderSet(set) {
+      try {
+        localStorage.setItem(USER_DELETED_ORDERS_KEY, JSON.stringify(Array.from(set || [])));
+      } catch (e) {}
+    }
+
+    function markMyOrderDeleted(orderNumber) {
+      const set = getDeletedMyOrderSet();
+      if (orderNumber) set.add(String(orderNumber).trim());
+      saveDeletedMyOrderSet(set);
+    }
+
+    function unmarkMyOrderDeleted(orderNumber) {
+      const set = getDeletedMyOrderSet();
+      set.delete(String(orderNumber || '').trim());
+      saveDeletedMyOrderSet(set);
     }
 
     function formatCreatedAt(value) {
@@ -1372,7 +1407,8 @@
       (ordersList || []).forEach(localOrder => {
         const number = String(localOrder.orderNumber || '').trim();
         if (!number || remoteMap.has(number)) return;
-        if (localOrder._localPending || (isReviewStatus(localOrder) && isOrderMine(localOrder))) {
+        // احتفظ بأي طلب أنشأه هذا المستخدم حتى لو تغيرت حالته محلياً إلى معتمد.
+        if (isOrderMine(localOrder) || localOrder._localPending || localOrder._remotePending) {
           merged.push(localOrder);
         }
       });
@@ -1424,7 +1460,7 @@
       search.style.position = 'relative';
       search.style.top = 'auto';
       search.style.flex = '0 0 auto';
-      search.style.zIndex = '1000';
+      search.style.zIndex = '2';
 
       list.style.flex = '1 1 auto';
       list.style.minHeight = '0';
@@ -1436,7 +1472,32 @@
       list.style.overscrollBehavior = 'contain';
     }
 
+    function ensureModalLayer() {
+      document.querySelectorAll('.modal-overlay').forEach(modal => {
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.zIndex = '2147483000';
+      });
+    }
+
+    function showModalById(id) {
+      ensureModalLayer();
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.add('is-open');
+      modal.style.display = 'flex';
+    }
+
+    function hideModalById(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.remove('is-open');
+      modal.style.display = 'none';
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+      ensureModalLayer();
       lockSearchWhileProductsScroll();
       applyScrollableViewsLayout();
       window.addEventListener('resize', lockSearchWhileProductsScroll);
@@ -2514,7 +2575,7 @@
         </div>`;
       }).join('');
       document.getElementById('checkout-total-price').innerText = total.toLocaleString() + ' د.ع';
-      document.getElementById('modal-send-order').style.display = 'flex';
+      showModalById('modal-send-order');
     }
     function refreshCheckoutModal() {
       openSendModal();
@@ -2566,9 +2627,41 @@
       }
     }
 
-    function closeSendModal() { document.getElementById('modal-send-order').style.display = 'none'; }
+    function closeSendModal() { hideModalById('modal-send-order'); }
 
     let sendingOrderInProgress = false;
+
+    function makeOrderSignature(orderOrData) {
+      const o = orderOrData || {};
+      const items = Array.isArray(o.items) ? o.items.map(it => ({
+        id: String(it && it.id || '').trim(),
+        barcode: String(it && it.barcode || '').trim(),
+        name: String(it && it.name || '').trim().toLowerCase().replace(/\s+/g,' '),
+        quantity: Math.floor(Number(it && it.quantity) || 0),
+        price: Number(it && it.price) || 0
+      })).sort((a,b) => {
+        const ak = (a.id || a.barcode || a.name);
+        const bk = (b.id || b.barcode || b.name);
+        return ak.localeCompare(bk);
+      }) : [];
+      return JSON.stringify({
+        userId: String(o.userId || getLocalUserId()).trim(),
+        pharmacyName: String(o.pharmacyName || '').trim().toLowerCase().replace(/\s+/g,' '),
+        phone: normalizePhone(o.phone || ''),
+        items: items
+      });
+    }
+
+    function findLocalDuplicateOrder(order) {
+      const sig = makeOrderSignature(order);
+      return (ordersList || []).find(existing => {
+        if (!existing) return false;
+        if (String(existing.orderNumber || '').trim() === String(order.orderNumber || '').trim()) return false;
+        if (!isOrderMine(existing)) return false;
+        if (!Array.isArray(existing.items) || !existing.items.length) return false;
+        return makeOrderSignature(existing) === sig;
+      }) || null;
+    }
 
     async function confirmOrderSubmission() {
       if (sendingOrderInProgress) return;
@@ -2606,11 +2699,26 @@
         staffName:activeStaffName, items:newItems, _localPending:true, _localSeq:now.getTime()
       };
 
+      // تحذير قبل إنشاء طلب مطابق سابقاً. يمكن للمستخدم المتابعة صراحةً.
+      const duplicate = findLocalDuplicateOrder(order);
+      let forceDuplicate = false;
+      if (duplicate) {
+        const sameStatus = String(duplicate.status || 'قيد المراجعة').trim();
+        const proceed = confirm(
+          '⚠️ تنبيه: توجد طلبية مطابقة لهذه الطلبية في «طلباتي».\n\n' +
+          'رقم الطلب السابق: ' + String(duplicate.orderNumber || '') + '\n' +
+          'الحالة: ' + sameStatus + '\n\n' +
+          'هل تريد إرسال الطلب مرة أخرى رغم أنه مطابق؟'
+        );
+        if (!proceed) return;
+        forceDuplicate = true;
+      }
+
       rememberUserOrderIdentity(ph,phone);
       ordersList.unshift(order);
       saveOrdersLocal();
 
-      // المطلوب: تفريغ السلة فور إرسال الطلب. الطلب نفسه يبقى محفوظاً في «طلباتي».
+      // تفريغ السلة فور الضغط على إرسال. الطلب يبقى في «طلباتي».
       cartMap = {};
       saveCartState();
       renderProducts();
@@ -2621,7 +2729,23 @@
 
       sendingOrderInProgress = true;
       try {
-        const result = await postToApi({action:'new_order',order:order});
+        let result = await postToApi({action:'new_order',order:order,forceDuplicate:forceDuplicate});
+
+        // إذا كان هناك طلب مطابق موجود على الخادم ولم نطلب التجاوز، نعرض تحذيراً ثانياً.
+        if (result && result.duplicateWarning && !forceDuplicate) {
+          const proceed = confirm(
+            '⚠️ توجد طلبية مطابقة موجودة مسبقاً في المستودع.\n\n' +
+            'هل تريد إنشاء نسخة ثانية منها؟'
+          );
+          if (!proceed) {
+            ordersList = ordersList.filter(x => String(x.orderNumber || '') !== String(order.orderNumber || ''));
+            saveOrdersLocal();
+            renderMyOrders();
+            return;
+          }
+          result = await postToApi({action:'new_order',order:order,forceDuplicate:true});
+        }
+
         const localOrder=ordersList.find(x=>String(x.orderNumber)===String(order.orderNumber));
         if(localOrder){ delete localOrder._localPending; localOrder._remotePending=true; }
         saveOrdersLocal();
@@ -2677,9 +2801,32 @@
           <div style="font-size:11px;color:var(--ios-sub);margin-top:3px;">📅 ${escapeHtml(o.date)} | المواد: ${(o.items||[]).length} | المبلغ المطلوب: ${(o.totalAmount||0).toLocaleString()} د.ع</div>
           <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
             <button class="btn" style="background:var(--ios-green);" onclick="openInspectModal(${idx})">🔎 فحص وتعديل</button>
+            <button class="btn btn-danger" onclick="deleteIncomingOrder(${idx})">🗑️ حذف نهائي</button>
             <button class="btn btn-sec" onclick="printInvoiceA4(${idx})">طباعة A4</button>
           </div>
         </div>`).join('');
+    }
+
+    async function deleteIncomingOrder(idx) {
+      if (!isAdminUnlocked) return alert('حذف الطلبيات الواردة متاح فقط لصاحب المذخر.');
+      const order = ordersList[idx];
+      if (!order || !isReviewStatus(order)) return alert('لا يمكن حذف طلبية تم اعتمادها أو تجهيزها أو تسليمها.');
+      const orderNumber = String(order.orderNumber || '').trim();
+      if (!orderNumber) return alert('رقم الطلب غير موجود.');
+      if (!confirm(`هل أنت متأكد من حذف الطلبية ${orderNumber} نهائياً؟\n\nلن يتم خصم أو إعادة أي كمية من المخزون.`)) return;
+
+      try {
+        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
+        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+        saveOrdersLocal();
+        closeInspectModal();
+        renderIncomingOrders();
+        renderOrders();
+        await loadRemoteData();
+        alert('تم حذف الطلبية نهائياً قبل الاعتماد.');
+      } catch (e) {
+        alert('لم يتم حذف الطلبية. لم أغيّر السجل المحلي.\n\nالسبب: ' + (e && e.message ? e.message : e));
+      }
     }
 
     async function approveIncomingOrder(idx) {
@@ -2709,9 +2856,12 @@
       const identity = getUserOrderIdentity();
       const uid = identity.userId;
       const phone = normalizePhone(identity.phone);
-      const name = String(identity.pharmacyName || '').trim().toLowerCase();
+      const deletedMine = getDeletedMyOrderSet();
 
       const mine = (ordersList || []).map((o, idx) => ({o, idx})).filter(({o}) => {
+        const orderNumber = String(o && o.orderNumber || '').trim();
+        if (!orderNumber || deletedMine.has(orderNumber)) return false;
+
         const ouid = String(o.userId || '').trim();
         const oph = normalizePhone(o.phone || '');
         if (ouid && uid && ouid === uid) return true;
@@ -2740,25 +2890,26 @@
           </div>
         `).join('') : '<div style="padding:8px;color:var(--ios-sub);">لا توجد تفاصيل محفوظة لهذه الطلبية.</div>';
 
+        const editPart = review
+          ? `<button class="btn" style="font-size:11px;padding:5px 9px;background:var(--ios-blue);" onclick="openInspectModal(${idx})">✏️ فحص وتعديل</button>${o._localPending ? `<button class="btn" style="font-size:11px;padding:5px 9px;background:var(--ios-orange);" onclick="resendPendingOrder(${idx})">↻ إعادة إرسال</button>` : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">✅ بانتظار الاعتماد</span>`}`
+          : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">الطلب محفوظ حتى تحذفه من «طلباتي»</span>`;
+
         return `
           <div class="prod-card" style="border-right:4px solid ${review ? 'var(--ios-orange)' : (delivered ? 'var(--ios-blue)' : 'var(--ios-green)')};">
             <div style="display:flex;justify-content:space-between;gap:8px;font-weight:800;">
               <span>📦 ${escapeHtml(o.orderNumber || '')}</span>
               <span class="badge" style="background:${statusBg};color:${statusColor};">${statusText}</span>
             </div>
-            <div style="font-size:11px;color:var(--ios-sub);margin-top:4px;">
-              📅 ${escapeHtml(o.date || '—')}
-            </div>
-            <div style="font-size:12px;margin-top:6px;">
-              <b>${items.length}</b> مادة | الإجمالي: <b style="color:var(--ios-green);">${Number(o.totalAmount || 0).toLocaleString()} د.ع</b>
-            </div>
+            <div style="font-size:11px;color:var(--ios-sub);margin-top:4px;">📅 ${escapeHtml(o.date || '—')}</div>
+            <div style="font-size:12px;margin-top:6px;"><b>${items.length}</b> مادة | الإجمالي: <b style="color:var(--ios-green);">${Number(o.totalAmount || 0).toLocaleString()} د.ع</b></div>
             <details style="margin-top:8px;">
               <summary style="cursor:pointer;font-weight:800;font-size:12px;">عرض المواد والتفاصيل</summary>
               <div style="margin-top:6px;">${itemsHtml}</div>
               ${o.deliveryStaffName ? `<div style="font-size:11px;color:var(--ios-sub);margin-top:6px;">🚚 موظف التسليم: ${escapeHtml(o.deliveryStaffName)}${o.deliveredAt ? ' | ' + escapeHtml(o.deliveredAt) : ''}</div>` : ''}
             </details>
-            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;flex-wrap:wrap;">
-              ${review ? `<button class="btn" style="font-size:11px;padding:5px 9px;background:var(--ios-blue);" onclick="openInspectModal(${idx})">✏️ فحص وتعديل</button>${o._localPending ? `<button class="btn" style="font-size:11px;padding:5px 9px;background:var(--ios-orange);" onclick="resendPendingOrder(${idx})">↻ إعادة إرسال</button>` : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">✅ محفوظ بانتظار الاعتماد</span>`}` : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">الطلب ثابت في السجل بعد الاعتماد</span>`}
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+              ${editPart}
+              <button class="btn btn-danger" style="font-size:11px;padding:5px 9px;" onclick="deleteMyOrderRecord(${idx})">🗑️ حذف من طلباتي</button>
               <button class="btn btn-sec" style="font-size:11px;padding:5px 9px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
             </div>
           </div>
@@ -2768,17 +2919,36 @@
 
     async function deleteMyOrderRecord(idx) {
       const o = ordersList[idx];
-      if (!o || !isReviewStatus(o)) return alert('لا يمكن إلغاء طلبية تم اعتمادها أو تجهيزها أو تسليمها.');
-      if (!confirm(`هل أنت متأكد من إلغاء الطلبية ${o.orderNumber}؟`)) return;
+      if (!o || !isOrderMine(o)) return alert('هذه الطلبية ليست ضمن طلبات هذا الموظف.');
+      const orderNumber = String(o.orderNumber || '').trim();
+      if (!orderNumber) return alert('رقم الطلب غير موجود.');
+
+      const approvedOrDelivered = isApprovedStatus(o) || isDeliveredStatus(o);
+      const confirmText = approvedOrDelivered
+        ? `حذف الطلبية ${orderNumber} من «طلباتي»؟\n\nسيتم إخفاؤها من سجل الموظف فقط، ولن يتم حذف سجلها المعتمد من Google Sheets.`
+        : `حذف الطلبية ${orderNumber} نهائياً من «طلباتي»؟\n\nالطلب قيد المراجعة ولم يُعتمد بعد.`;
+      if (!confirm(confirmText)) return;
+
+      if (approvedOrDelivered) {
+        // الطلب المعتمد/المسلّم يبقى في Google Sheets كسجل رسمي، ويُحذف فقط من «طلباتي» لهذا الجهاز.
+        markMyOrderDeleted(orderNumber);
+        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+        saveOrdersLocal();
+        renderMyOrders();
+        alert('تم حذف الطلبية من «طلباتي» فقط. السجل المعتمد في Google Sheets لم يتغير.');
+        return;
+      }
 
       try {
-        await postToApi({ action: 'delete_order', orderNumber: o.orderNumber });
-        ordersList.splice(idx, 1);
-        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
+        markMyOrderDeleted(orderNumber);
+        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+        saveOrdersLocal();
         renderMyOrders();
-        alert('تم إلغاء الطلبية قبل اعتمادها.');
+        renderIncomingOrders();
+        alert('تم حذف الطلبية قبل اعتمادها.');
       } catch (e) {
-        alert('تعذر إلغاء الطلبية.\n\nالسبب: ' + (e.message || e));
+        alert('تعذر حذف الطلبية قيد المراجعة.\n\nالسبب: ' + (e.message || e));
       }
     }
 
@@ -3007,10 +3177,10 @@
       requestAnimationFrame(applyScrollableViewsLayout);
     }
 
-    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
-    function closeAddModal() { document.getElementById('modal-add-item').style.display = 'none'; }
+    function openAddModal() { showModalById('modal-add-item'); const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
+    function closeAddModal() { hideModalById('modal-add-item'); }
     function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
-    function closeCameraScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
+    function closeCameraScanner() { hideModalById('modal-scanner'); }
 
 
     function openEditItemModal(prodId) {
@@ -3028,7 +3198,7 @@
       document.getElementById('edit-price').value = item.price ?? 0;
       document.getElementById('edit-bonus').value = item.bonus ?? 0;
       document.getElementById('edit-exp').value = item.expiryDate || '';
-      document.getElementById('modal-edit-item').style.display = 'flex';
+      showModalById('modal-edit-item');
     }
 
     function closeEditModal() {
@@ -3286,7 +3456,7 @@
       if (!isAdminUnlocked) return alert("طباعة الباركود متاحة فقط لصاحب المذخر.");
       currentBarcodePrintData = { name: name || '', barcode: barcode || '', price: Number(price) || 0 };
       applyPrintSettings();
-      document.getElementById('modal-direct-barcode').style.display = 'flex';
+      showModalById('modal-direct-barcode');
       renderBarcodePreview();
       refreshPrintPrinters();
     }
@@ -3373,11 +3543,17 @@
         saveBtn.textContent = isAdminUnlocked ? 'اعتماد وتجهيز ✓' : 'حفظ التعديلات';
         saveBtn.style.background = isAdminUnlocked ? 'var(--ios-green)' : 'var(--ios-blue)';
       }
-      document.getElementById('modal-inspect-order').style.display = 'flex';
+      const delBtn = document.getElementById('inspect-delete-btn');
+      if (delBtn) {
+        delBtn.style.display = (!delivered && isAdminUnlocked && isReviewStatus(order)) ? 'inline-flex' : 'none';
+      }
+      showModalById('modal-inspect-order');
     }
 
     function closeInspectModal() {
       currentInspectingOrderIndex = null;
+      const delBtn = document.getElementById('inspect-delete-btn');
+      if (delBtn) delBtn.style.display = 'none';
       const el = document.getElementById('modal-inspect-order');
       if (el) el.style.display = 'none';
     }
