@@ -1359,7 +1359,7 @@
       const numbers = Array.from(set);
       for (const orderNumber of numbers) {
         try {
-          await postToApi({ action: 'delete_order', orderNumber });
+          await postToApi({ action: 'discard_pending_order', orderNumber });
           unmarkOrderDeletePending(orderNumber);
         } catch (e) {
           // يبقى في قائمة الانتظار للمحاولة التالية.
@@ -1450,18 +1450,28 @@
     }
 
     function mergeOrdersPreservingLocal(remoteOrders) {
-      const remote = Array.isArray(remoteOrders) ? remoteOrders : [];
-      const remoteMap = new Map(remote.map(o => [String(o.orderNumber || '').trim(), o]));
-      const merged = [...remote];
-      (ordersList || []).forEach(localOrder => {
-        const number = String(localOrder.orderNumber || '').trim();
-        if (!number || remoteMap.has(number)) return;
-        // احتفظ بأي طلب أنشأه هذا المستخدم حتى لو تغيرت حالته محلياً إلى معتمد.
-        if (isOrderMine(localOrder) || localOrder._localPending || localOrder._remotePending) {
-          merged.push(localOrder);
+      // توحيد الطلبات حسب رقم الطلب حتى لا تظهر النسخة القديمة والجديدة معاً.
+      // إذا كانت هناك نسخة معلقة قبل الاعتماد، فهي صاحبة الأولوية على أي نسخة قديمة في Sheets.
+      const remoteMap = new Map();
+      (Array.isArray(remoteOrders) ? remoteOrders : []).forEach(o => {
+        const number = String(o && o.orderNumber || '').trim();
+        if (!number) return;
+        const existing = remoteMap.get(number);
+        if (!existing || (o._remotePending && !existing._remotePending)) {
+          remoteMap.set(number, o);
         }
       });
-      return merged.sort((a, b) => orderDateValue(b) - orderDateValue(a));
+
+      // الطلب المحلي غير المرفق بالخادم يبقى ظاهرًا حتى ينجح حفظه.
+      (ordersList || []).forEach(localOrder => {
+        const number = String(localOrder && localOrder.orderNumber || '').trim();
+        if (!number || remoteMap.has(number)) return;
+        if (localOrder._localPending || isOrderMine(localOrder)) {
+          remoteMap.set(number, localOrder);
+        }
+      });
+
+      return Array.from(remoteMap.values()).sort((a, b) => orderDateValue(b) - orderDateValue(a));
     }
 
     function applyScrollableViewsLayout() {
@@ -2877,8 +2887,9 @@
       renderIncomingOrders();
       renderOrders();
 
-      // إرسال الحذف في الخلفية بدون تعطيل المستخدم.
-      postToApi({ action: 'delete_order', orderNumber })
+      // الطلب قيد المراجعة لم يُحفظ في Sheets أصلاً؛ نحذفه من التخزين المعلق فقط.
+      // لا نرسل أي عملية حذف إلى orders ولا إلى order detalis.
+      postToApi({ action: 'discard_pending_order', orderNumber })
         .then(() => {
           unmarkOrderDeletePending(orderNumber);
           loadRemoteData().catch(() => {});
@@ -3007,7 +3018,7 @@
       renderIncomingOrders();
       closeInspectModal();
 
-      postToApi({ action: 'delete_order', orderNumber })
+      postToApi({ action: 'discard_pending_order', orderNumber })
         .then(() => {
           unmarkOrderDeletePending(orderNumber);
           loadRemoteData().catch(() => {});
