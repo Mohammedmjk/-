@@ -1,4 +1,4 @@
-const CACHE_NAME = 'samo-wms-v105';
+const CACHE_NAME = 'samo-wms-v106';
 
 // عند التثبيت: مسح أي كاش قديم وتفعيل الإصدار الجديد فوراً
 self.addEventListener('install', (e) => {
