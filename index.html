@@ -243,37 +243,38 @@
     #search-box.search-input, #pos-search-box.search-input { padding-left: 78px; }
     .search-clear-btn:hover { background: #8e8e93; }
 
+    /* عداد المخزن يظهر بجانب القائمة ويتابع موضع التمرير */
     .products-scroll-counter {
-      margin: 0 16px 7px;
-      padding: 6px 10px;
-      border-radius: 10px;
-      background: rgba(255,255,255,.88);
+      position: absolute;
+      right: 6px;
+      top: 8px;
+      z-index: 8;
+      margin: 0;
+      padding: 5px 7px;
+      border-radius: 9px;
+      background: rgba(255,255,255,.94);
       border: 1px solid var(--ios-border);
-      box-shadow: 0 1px 4px rgba(0,0,0,.04);
-      font-size: 10px;
+      box-shadow: 0 2px 7px rgba(0,0,0,.10);
+      font-size: 9px;
       font-weight: 800;
       color: var(--ios-sub);
       display: flex;
       align-items: center;
-      gap: 8px;
       direction: rtl;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      white-space: nowrap;
     }
     .products-scroll-counter-text { flex: 0 0 auto; white-space: nowrap; }
     .products-scroll-track {
-      flex: 1;
-      height: 5px;
-      background: #e5e5ea;
-      border-radius: 999px;
-      overflow: hidden;
-      min-width: 30px;
+      display: none;
     }
     .products-scroll-progress {
       width: 0%;
-      height: 100%;
-      border-radius: 999px;
-      background: var(--ios-blue);
-      transition: width .12s linear;
+      height: 0;
     }
+    #view-home { position: relative !important; }
+    #prod-list-container { position: relative !important; }
     .prod-last-request {
       margin-top: 4px;
       font-size: 10px;
@@ -864,11 +865,11 @@
       </div>
     </div>
 
+    <div class="product-list" id="prod-list-container"></div>
     <div class="products-scroll-counter" id="products-scroll-counter">
       <span class="products-scroll-counter-text" id="products-scroll-counter-text">📦 المواد 0–0 من 0</span>
       <span class="products-scroll-track"><span class="products-scroll-progress" id="products-scroll-progress"></span></span>
     </div>
-    <div class="product-list" id="prod-list-container"></div>
   </div>
 
   <div id="view-pos" style="display: none;">
@@ -1784,6 +1785,14 @@
 
       const top = list.scrollTop;
       const bottom = top + list.clientHeight;
+
+      // يتحرك العداد مع موضع التمرير داخل قائمة المخزن
+      const counter = document.getElementById('products-scroll-counter');
+      if (counter) {
+        const maxScroll = Math.max(1, list.scrollHeight - list.clientHeight);
+        const y = 8 + (top / maxScroll) * Math.max(0, list.clientHeight - counter.offsetHeight - 16);
+        counter.style.top = y + 'px';
+      }
       let first = cards.findIndex(card => (card.offsetTop + card.offsetHeight) > top + 2);
       if (first < 0) first = 0;
       let last = cards.length - 1;
