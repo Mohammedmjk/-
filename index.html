@@ -243,61 +243,93 @@
     #search-box.search-input, #pos-search-box.search-input { padding-left: 78px; }
     .search-clear-btn:hover { background: #8e8e93; }
 
-    /* عداد المواد مدمج داخل مؤشر شريط التمرير نفسه */
+    /* مؤشر تفاعلي واضح: العداد مدمج داخل قبضة شريط التمرير نفسها */
     #view-home { position: relative !important; }
     #prod-list-container {
       position: relative !important;
       scrollbar-width: none;
       -ms-overflow-style: none;
-      padding-right: 22px !important;
+      padding-right: 30px !important;
     }
     #prod-list-container::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
 
     .products-scrollbar {
       position: absolute;
-      top: 4px;
-      right: 3px;
-      bottom: 4px;
-      width: 18px;
+      top: 5px;
+      right: 5px;
+      bottom: 5px;
+      width: 26px;
       z-index: 20;
-      border-radius: 10px;
-      background: rgba(229,229,234,.55);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(242,242,247,.96), rgba(229,229,234,.88));
+      border: 1px solid rgba(60,60,67,.10);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.08);
       user-select: none;
       touch-action: none;
+      overflow: hidden;
+    }
+    .products-scrollbar::before {
+      content: '↕';
+      position: absolute;
+      left: 0; right: 0; top: 5px;
+      text-align: center;
+      font-size: 10px;
+      line-height: 12px;
+      color: rgba(60,60,67,.38);
+      pointer-events: none;
+      z-index: 1;
     }
     .products-scrollbar-thumb {
       position: absolute;
-      left: 1px;
-      right: 1px;
+      left: 2px;
+      right: 2px;
       top: 0;
-      min-height: 46px;
-      border-radius: 9px;
-      background: rgba(120,120,128,.72);
-      border: 1px solid rgba(255,255,255,.8);
-      box-shadow: 0 1px 4px rgba(0,0,0,.16);
+      min-height: 64px;
+      border-radius: 11px;
+      background: linear-gradient(180deg, #007aff 0%, #5856d6 100%);
+      border: 2px solid rgba(255,255,255,.96);
+      box-shadow: 0 3px 9px rgba(0,122,255,.28), inset 0 1px 1px rgba(255,255,255,.35);
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       cursor: grab;
       touch-action: none;
+      transition: box-shadow .15s ease, transform .15s ease;
     }
-    .products-scrollbar-thumb:active { cursor: grabbing; }
+    .products-scrollbar-thumb::after {
+      content: '';
+      position: absolute;
+      left: 5px; right: 5px; top: 7px;
+      height: 2px;
+      border-radius: 2px;
+      background: rgba(255,255,255,.55);
+      box-shadow: 0 5px 0 rgba(255,255,255,.30);
+      pointer-events: none;
+    }
+    .products-scrollbar-thumb:hover {
+      box-shadow: 0 4px 12px rgba(0,122,255,.38), inset 0 1px 1px rgba(255,255,255,.4);
+    }
+    .products-scrollbar-thumb:active { cursor: grabbing; transform: scaleX(1.06); }
     .products-scroll-counter-text {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       width: 100%;
-      padding: 4px 2px;
+      min-height: 100%;
+      padding: 18px 2px 5px;
       box-sizing: border-box;
       color: #fff;
-      font-size: 8px;
+      font-size: 9px;
       font-weight: 900;
-      line-height: 1.15;
+      line-height: 1.25;
       text-align: center;
       direction: rtl;
-      white-space: normal;
-      word-break: keep-all;
+      white-space: pre-line;
       pointer-events: none;
-      text-shadow: 0 1px 2px rgba(0,0,0,.35);
+      text-shadow: 0 1px 2px rgba(0,0,0,.32);
+      position: relative;
+      z-index: 2;
     }
     .products-scroll-track, .products-scroll-progress { display: none !important; }
     .prod-last-request {
@@ -893,7 +925,7 @@
     <div class="product-list" id="prod-list-container"></div>
     <div class="products-scrollbar" id="products-scrollbar" aria-hidden="true">
       <div class="products-scrollbar-thumb" id="products-scrollbar-thumb">
-        <span class="products-scroll-counter-text" id="products-scroll-counter-text">📦 0–0/0</span>
+        <span class="products-scroll-counter-text" id="products-scroll-counter-text">0–0\nمن 0</span>
       </div>
     </div>
   </div>
@@ -1811,7 +1843,7 @@
       const maxScroll = Math.max(0, content - viewport);
 
       if (!total || !viewport || content <= viewport + 1) {
-        text.textContent = `📦 ${total ? '1–' + total : '0–0'}/${total}`;
+        text.textContent = `${total ? '1–' + total : '0–0'}\nمن ${total}`;
         thumb.style.top = '0px';
         thumb.style.height = '100%';
         scrollbar.style.display = total ? 'flex' : 'none';
@@ -1837,7 +1869,7 @@
 
       const startNo = first + 1;
       const endNo = Math.min(total, Math.max(startNo, last + 1));
-      text.textContent = `📦 ${startNo}–${endNo}/${total}`;
+      text.textContent = `${startNo}–${endNo}\nمن ${total}`;
     }
 
     function initProductsScrollbar() {
