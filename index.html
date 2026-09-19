@@ -501,15 +501,21 @@
     }
 
     .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background: rgba(0,0,0,0.42);
       backdrop-filter: blur(4px);
       display: none;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
-      z-index: 100;
+      padding: 12px;
+      z-index: 2147483000 !important;
+      isolation: isolate;
     }
+    .modal-overlay.is-open { display: flex !important; }
+    .modal-overlay .modal-sheet { position: relative; z-index: 2147483001 !important; }
     .modal-sheet {
       background: #ffffff;
       width: 100%;
@@ -583,7 +589,7 @@
       flex: 0 0 auto;
       position: relative !important;
       top: auto !important;
-      z-index: 1000 !important;
+      z-index: 10 !important;
     }
 
     body > .tabs-bar {
@@ -606,7 +612,7 @@
       flex: 0 0 auto;
       position: relative !important;
       top: auto !important;
-      z-index: 1000 !important;
+      z-index: 2 !important;
       background: var(--ios-bg);
     }
 
@@ -633,169 +639,48 @@
       overflow: hidden !important;
     }
 
-    /* مؤشر تمرير الأدوية يكون داخل منطقة قائمة الأدوية نفسها، وليس فوق شريط البحث */
-    #products-list-shell {
-      position: relative !important;
-      flex: 1 1 auto !important;
+
+    /* إصلاح تمرير القوائم داخل الإطار */
+    #view-incoming, #view-log, #view-staff, #view-reports {
       min-height: 0 !important;
       overflow: hidden !important;
-      width: 100%;
     }
-    #prod-list-container {
-      position: relative !important;
-      width: 100% !important;
-      height: 100% !important;
+    #incoming-orders-container, #orders-list-container, #staff-report-container {
       min-height: 0 !important;
-      max-height: none !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
-      scrollbar-width: none !important;
-      -ms-overflow-style: none !important;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: 24px;
     }
-    #prod-list-container::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
-
-    /* المسار مرتبط مباشرة بمنطقة قائمة الأدوية */
-    #products-scrollbar {
-      position: absolute;
-      top: 6px;
-      right: 3px;
-      bottom: 8px;
-      width: 15px;
-      z-index: 30;
-      display: none;
-      pointer-events: auto;
-      touch-action: none;
-      user-select: none;
-      overflow: visible;
+    #modal-send-order, #modal-inspect-order {
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 12px;
     }
-    #products-scrollbar::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      left: 5px;
-      width: 5px;
-      border-radius: 8px;
-      background: rgba(60,60,67,.14);
+    #modal-send-order .modal-sheet, #modal-inspect-order .modal-sheet {
+      width: min(550px, 96vw);
+      max-width: 550px;
+      max-height: 88vh;
+      border-radius: 20px !important;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
-    #products-scrollbar-thumb {
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      top: 0;
-      min-height: 42px;
-      border-radius: 8px;
-      background: rgba(0,122,255,.86);
-      box-shadow: 0 1px 5px rgba(0,122,255,.30);
-      cursor: grab;
-      touch-action: none;
-      overflow: visible;
-    }
-    #products-scrollbar-thumb:hover { background: rgba(0,122,255,.92); }
-    #products-scrollbar-thumb:active { cursor: grabbing; background: rgba(0,122,255,.98); }
-
-    /* يظهر العدد فقط أثناء الضغط/السحب، ويتحرك تلقائياً مع المؤشر */
-    #products-scroll-counter-text {
-      position: absolute;
-      right: calc(100% + 5px);
-      top: 50%;
-      min-width: 58px;
-      max-width: 74px;
-      padding: 5px 7px;
-      border-radius: 10px;
-      background: rgba(28,28,30,.92);
-      color: #fff;
-      font-size: 10px;
-      line-height: 1.25;
-      font-weight: 800;
-      text-align: center;
-      direction: rtl;
-      white-space: pre-line;
-      box-shadow: 0 3px 10px rgba(0,0,0,.22);
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(-50%) scale(.94);
-      transition: opacity .12s ease, transform .12s ease;
-    }
-    #products-scroll-counter-text.show {
-      opacity: 1;
-      transform: translateY(-50%) scale(1);
-    }
-
-    /* لا يزيح المؤشر أسماء الأدوية؛ المساحة محجوزة داخل هامش القائمة فقط */
-    @media (max-width: 600px) {
-      #products-scrollbar {
-        right: 2px;
-        width: 14px;
-      }
-      #products-scrollbar-thumb {
-        left: 4px;
-        right: 4px;
-      }
-      #products-scroll-counter-text {
-        right: calc(100% + 5px);
-        font-size: 10px;
-      }
-    }
-
-    /* إغلاق نافذة فحص الطلبيات يبقى ظاهرًا على الهاتف أثناء التمرير */
-    #modal-inspect-order .modal-sheet {
-      position: relative;
-      padding-top: 12px;
-    }
-    #modal-inspect-order .sheet-head {
+    #modal-send-order .sheet-head, #modal-inspect-order .sheet-head {
       position: sticky;
-      top: -12px;
+      top: -18px;
       z-index: 20;
-      background: rgba(255,255,255,.97);
-      padding-top: 8px;
-      padding-bottom: 10px;
-      margin-bottom: 10px;
-      box-shadow: 0 1px 0 rgba(0,0,0,.06);
+      background: #fff;
+      padding-top: 18px;
     }
-    @media (max-width: 600px) {
-      #modal-inspect-order .sheet-head {
-        top: -12px;
-      }
-      #modal-inspect-order .sheet-head .btn {
-        min-width: 64px;
-        min-height: 38px;
-        font-size: 13px;
-        padding: 8px 11px;
-        flex-shrink: 0;
-      }
-      #modal-inspect-order .sheet-title {
-        font-size: 15px;
-        padding-left: 6px;
-      }
-    }
-
-    .inspect-mobile-close {
-      display: none;
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      z-index: 30;
-      width: 40px;
-      height: 40px;
-      border: 0;
-      border-radius: 50%;
-      background: #f2f2f7;
-      color: #3a3a3c;
-      font-size: 28px;
-      line-height: 1;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,.08);
-    }
-    @media (max-width: 600px) {
-      #modal-inspect-order .inspect-mobile-close {
-        display: flex;
-      }
-      #modal-inspect-order .sheet-head .btn {
-        margin-left: 44px;
-      }
+    #checkout-summary, #inspect-order-items-box {
+      max-height: 42vh !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--ios-border);
+      border-radius: 10px;
+      padding: 6px 10px;
     }
 
 </style>
@@ -903,14 +788,7 @@
       </div>
     </div>
 
-    <div id="products-list-shell">
-      <div class="product-list" id="prod-list-container"></div>
-      <div id="products-scrollbar" aria-hidden="true">
-        <div id="products-scrollbar-thumb" aria-label="مؤشر تمرير الأدوية">
-          <span id="products-scroll-counter-text">1–1\nمن 1</span>
-        </div>
-      </div>
-    </div>
+    <div class="product-list" id="prod-list-container"></div>
   </div>
 
   <div id="view-pos" style="display: none;">
@@ -1183,15 +1061,15 @@
 
   <div id="modal-inspect-order" class="modal-overlay">
     <div class="modal-sheet">
-      <button type="button" class="inspect-mobile-close" onclick="closeInspectModal()" aria-label="إغلاق نافذة الطلبية">×</button>
       <div class="sheet-head">
         <div class="sheet-title" id="inspect-modal-title">فحص وتعديل الطلبية</div>
         <button class="btn btn-sec" onclick="closeInspectModal()">إغلاق</button>
       </div>
       <div id="inspect-order-items-box" style="max-height: 250px; overflow-y: auto; margin-bottom: 12px;"></div>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn btn-danger" style="display:none; padding: 12px;" id="inspect-delete-btn" onclick="deleteIncomingOrder(currentInspectingOrderIndex)">🗑️ حذف الطلب نهائياً</button>
         <button class="btn" style="flex: 1; justify-content: center; background: var(--ios-green); padding: 12px;" id="inspect-save-btn" onclick="approveAndSignOrder()">اعتماد وتجهيز ✓</button>
-        <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إلغاء</button>
+        <button class="btn btn-danger" style="padding: 12px;" onclick="closeInspectModal()">إغلاق</button>
       </div>
     </div>
   </div>
@@ -1382,7 +1260,8 @@
 
     async function postToApi(payload) {
       const controller = new AbortController();
-      const timeoutMs = payload && payload.action === 'gemini_analyze_medicine_image' ? 45000 : 30000;
+      const action = payload && payload.action ? String(payload.action) : '';
+      const timeoutMs = action === 'gemini_analyze_medicine_image' ? 45000 : (action === 'new_order' ? 60000 : 45000);
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       let response;
       try {
@@ -1394,7 +1273,10 @@
         });
       } catch (e) {
         if (e && e.name === 'AbortError') {
-          throw new Error('انتهت مهلة الاتصال بالخادم. جرّب صورة أصغر أو أوضح ثم أعد المحاولة.');
+          if (action === 'gemini_analyze_medicine_image') {
+            throw new Error('انتهت مهلة تحليل الصورة. جرّب صورة أصغر أو أوضح ثم أعد المحاولة.');
+          }
+          throw new Error('انتهت مهلة الاتصال بالخادم. لم يتم تأكيد حفظ العملية. أعد المحاولة.');
         }
         throw new Error('تعذر الاتصال بـ Google Apps Script: ' + (e && e.message ? e.message : e));
       } finally {
@@ -1434,6 +1316,7 @@
     const USER_ID_KEY = 'samo_user_id_v1';
     const USER_PHARMACY_NAME_KEY = 'samo_user_pharmacy_name_v1';
     const USER_PHARMACY_PHONE_KEY = 'samo_user_pharmacy_phone_v1';
+    const USER_DELETED_ORDERS_KEY = 'samo_deleted_my_orders_v1';
 
     function getLocalUserId() {
       let id = localStorage.getItem(USER_ID_KEY);
@@ -1462,119 +1345,104 @@
     }
 
 
-    let productsScrollbarDrag = null;
-    let productsCounterHideTimer = null;
-
-    function getVisibleProductRange() {
-      const list = document.getElementById('prod-list-container');
-      const text = document.getElementById('products-scroll-counter-text');
-      if (!list || !text) return { start: 0, end: 0, total: 0 };
-      const cards = Array.from(list.querySelectorAll('.prod-card'));
-      const total = cards.length;
-      if (!total) return { start: 0, end: 0, total: 0 };
-      const listRect = list.getBoundingClientRect();
-      const top = listRect.top + 1;
-      const bottom = listRect.bottom - 1;
-      let first = cards.findIndex(card => card.getBoundingClientRect().bottom > top);
-      if (first < 0) first = 0;
-      let last = -1;
-      for (let i = first; i < cards.length; i++) {
-        if (cards[i].getBoundingClientRect().top < bottom) last = i;
-        else break;
-      }
-      if (last < first) last = first;
-      const start = first + 1;
-      const end = Math.min(total, last + 1);
-      return { start, end, total };
+    function saveOrdersLocal() {
+      try { localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList || [])); } catch (e) {}
     }
 
-    function positionProductsCounter(show = false) {
-      const list = document.getElementById('prod-list-container');
-      const scrollbar = document.getElementById('products-scrollbar');
-      const thumb = document.getElementById('products-scrollbar-thumb');
-      const text = document.getElementById('products-scroll-counter-text');
-      if (!list || !scrollbar || !thumb || !text) return;
-
-      const total = list.querySelectorAll('.prod-card').length;
-      const viewport = list.clientHeight;
-      const content = list.scrollHeight;
-      const maxScroll = Math.max(0, content - viewport);
-      if (!total || !viewport || content <= viewport + 1) {
-        scrollbar.style.display = 'none';
-        text.classList.remove('show');
-        return;
-      }
-
-      scrollbar.style.display = 'block';
-      const trackHeight = scrollbar.clientHeight;
-      const thumbHeight = Math.max(42, Math.round(trackHeight * viewport / content));
-      const travel = Math.max(0, trackHeight - thumbHeight);
-      const ratio = maxScroll ? (list.scrollTop / maxScroll) : 0;
-      const top = Math.round(travel * ratio);
-      thumb.style.height = thumbHeight + 'px';
-      thumb.style.top = top + 'px';
-
-      const range = getVisibleProductRange();
-      text.textContent = `${range.start}–${range.end}\nمن ${range.total}`;
-      if (show) {
-        text.classList.add('show');
+    function getDeletedMyOrderSet() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(USER_DELETED_ORDERS_KEY) || '[]');
+        return new Set(Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : []);
+      } catch (e) {
+        return new Set();
       }
     }
 
-    function hideProductsCounterSoon() {
-      clearTimeout(productsCounterHideTimer);
-      productsCounterHideTimer = setTimeout(() => {
-        const text = document.getElementById('products-scroll-counter-text');
-        if (text) text.classList.remove('show');
-      }, 650);
+    function saveDeletedMyOrderSet(set) {
+      try {
+        localStorage.setItem(USER_DELETED_ORDERS_KEY, JSON.stringify(Array.from(set || [])));
+      } catch (e) {}
     }
 
-    function initProductsScrollbar() {
-      const list = document.getElementById('prod-list-container');
-      const scrollbar = document.getElementById('products-scrollbar');
-      const thumb = document.getElementById('products-scrollbar-thumb');
-      if (!list || !scrollbar || !thumb || scrollbar.dataset.ready === '1') return;
-      scrollbar.dataset.ready = '1';
-
-      list.addEventListener('scroll', () => {
-        const wasShown = document.getElementById('products-scroll-counter-text')?.classList.contains('show');
-        positionProductsCounter(!!wasShown);
-      }, { passive: true });
-
-      window.addEventListener('resize', () => positionProductsCounter(false));
-
-      thumb.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        thumb.setPointerCapture(e.pointerId);
-        productsScrollbarDrag = { startY: e.clientY, startTop: thumb.offsetTop, pointerId: e.pointerId };
-        positionProductsCounter(true);
-      });
-
-      thumb.addEventListener('pointermove', (e) => {
-        if (!productsScrollbarDrag || productsScrollbarDrag.pointerId !== e.pointerId) return;
-        const trackHeight = scrollbar.clientHeight;
-        const thumbHeight = thumb.offsetHeight;
-        const travel = Math.max(1, trackHeight - thumbHeight);
-        const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
-        const newTop = Math.max(0, Math.min(travel, productsScrollbarDrag.startTop + (e.clientY - productsScrollbarDrag.startY)));
-        list.scrollTop = (newTop / travel) * maxScroll;
-        positionProductsCounter(true);
-      });
-
-      const stopDrag = (e) => {
-        if (!productsScrollbarDrag || (e.pointerId !== undefined && e.pointerId !== productsScrollbarDrag.pointerId)) return;
-        productsScrollbarDrag = null;
-        hideProductsCounterSoon();
-      };
-      thumb.addEventListener('pointerup', stopDrag);
-      thumb.addEventListener('pointercancel', stopDrag);
-      thumb.addEventListener('lostpointercapture', () => {
-        productsScrollbarDrag = null;
-        hideProductsCounterSoon();
-      });
-
-      positionProductsCounter(false);
+    function markMyOrderDeleted(orderNumber) {
+      const set = getDeletedMyOrderSet();
+      if (orderNumber) set.add(String(orderNumber).trim());
+      saveDeletedMyOrderSet(set);
     }
+
+    function unmarkMyOrderDeleted(orderNumber) {
+      const set = getDeletedMyOrderSet();
+      set.delete(String(orderNumber || '').trim());
+      saveDeletedMyOrderSet(set);
+    }
+
+    function formatCreatedAt(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString('ar-IQ');
+    }
+
+    function orderDateValue(order) {
+      if (!order) return 0;
+      const a = Date.parse(String(order.createdAt || ''));
+      if (Number.isFinite(a)) return a;
+      const b = Date.parse(String(order.date || ''));
+      if (Number.isFinite(b)) return b;
+      return Number(order._localSeq || 0);
+    }
+
+    function isOrderMine(order) {
+      const identity = getUserOrderIdentity();
+      const ouid = String(order && order.userId || '').trim();
+      const oph = normalizePhone(order && order.phone || '');
+      if (ouid && identity.userId && ouid === identity.userId) return true;
+      if (oph && identity.phone && oph === identity.phone) return true;
+      return false;
+    }
+
+    function mergeOrdersPreservingLocal(remoteOrders) {
+      const remote = Array.isArray(remoteOrders) ? remoteOrders : [];
+      const remoteMap = new Map(remote.map(o => [String(o.orderNumber || '').trim(), o]));
+      const merged = [...remote];
+      (ordersList || []).forEach(localOrder => {
+        const number = String(localOrder.orderNumber || '').trim();
+        if (!number || remoteMap.has(number)) return;
+        // احتفظ بأي طلب أنشأه هذا المستخدم حتى لو تغيرت حالته محلياً إلى معتمد.
+        if (isOrderMine(localOrder) || localOrder._localPending || localOrder._remotePending) {
+          merged.push(localOrder);
+        }
+      });
+      return merged.sort((a, b) => orderDateValue(b) - orderDateValue(a));
+    }
+
+    function applyScrollableViewsLayout() {
+      const pairs = [
+        ['view-incoming', 'incoming-orders-container'],
+        ['view-log', 'orders-list-container'],
+        ['view-staff', 'staff-report-container']
+      ];
+      const header = document.querySelector('body > header');
+      const tabs = document.querySelector('body > .tabs-bar');
+      const topOffset = (header ? header.getBoundingClientRect().height : 0) + (tabs ? tabs.getBoundingClientRect().height + 24 : 0);
+      const h = Math.max(260, window.innerHeight - topOffset - 10);
+      pairs.forEach(([viewId, containerId]) => {
+        const view = document.getElementById(viewId);
+        const container = document.getElementById(containerId);
+        if (!view || !container) return;
+        view.style.height = h + 'px';
+        view.style.minHeight = '0';
+        if (view.style.display !== 'none') view.style.display = 'flex';
+        view.style.flexDirection = 'column';
+        view.style.overflow = 'hidden';
+        container.style.flex = '1 1 auto';
+        container.style.minHeight = '0';
+        container.style.overflowY = 'auto';
+        container.style.overflowX = 'hidden';
+        container.style.webkitOverflowScrolling = 'touch';
+        container.style.overscrollBehavior = 'contain';
+      });
+    }
+
 
     function lockSearchWhileProductsScroll() {
       // لا نستخدم sticky هنا؛ نجعل بنية الشاشة نفسها ثابتة،
@@ -1582,8 +1450,7 @@
       const home = document.getElementById('view-home');
       const search = document.querySelector('#view-home .search-wrapper');
       const list = document.getElementById('prod-list-container');
-      const shell = document.getElementById('products-list-shell');
-      if (!home || !search || !list || !shell) return;
+      if (!home || !search || !list) return;
 
       home.style.display = 'flex';
       home.style.flexDirection = 'column';
@@ -1593,16 +1460,11 @@
       search.style.position = 'relative';
       search.style.top = 'auto';
       search.style.flex = '0 0 auto';
-      search.style.zIndex = '1000';
+      search.style.zIndex = '2';
 
-      shell.style.flex = '1 1 auto';
-      shell.style.minHeight = '0';
-      shell.style.overflow = 'hidden';
-      shell.style.position = 'relative';
-
-      list.style.flex = 'none';
+      list.style.flex = '1 1 auto';
       list.style.minHeight = '0';
-      list.style.height = '100%';
+      list.style.height = 'auto';
       list.style.maxHeight = 'none';
       list.style.overflowY = 'auto';
       list.style.overflowX = 'hidden';
@@ -1610,10 +1472,36 @@
       list.style.overscrollBehavior = 'contain';
     }
 
+    function ensureModalLayer() {
+      document.querySelectorAll('.modal-overlay').forEach(modal => {
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.zIndex = '2147483000';
+      });
+    }
+
+    function showModalById(id) {
+      ensureModalLayer();
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.add('is-open');
+      modal.style.display = 'flex';
+    }
+
+    function hideModalById(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.remove('is-open');
+      modal.style.display = 'none';
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+      ensureModalLayer();
       lockSearchWhileProductsScroll();
-      initProductsScrollbar();
+      applyScrollableViewsLayout();
       window.addEventListener('resize', lockSearchWhileProductsScroll);
+      window.addEventListener('resize', applyScrollableViewsLayout);
       initSystem();
       window.addEventListener('click', (event) => {
         document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
@@ -2288,7 +2176,8 @@
               price: parseAppNumber(p.price),
               totalPrice: parseAppNumber(p.totalPrice),
               bonus: parseAppNumber(p.bonus),
-              expiryDate: p.expiryDate || ''
+              expiryDate: p.expiryDate || '',
+              createdAt: p.createdAt || ''
             })).filter(p => p.name);
             // لا نحذف مادة فشل ترحيلها من الجهاز: نحتفظ بها محلياً حتى يتأكد صاحب المذخر من الشيت.
             pendingLocalProducts.forEach(localP => {
@@ -2309,10 +2198,10 @@
             localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
             populateStaffDropdown();
           }
-          if (Array.isArray(data.orders)) {
-            ordersList = data.orders;
-            localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-          }
+          const remoteOrders = Array.isArray(data.orders) ? data.orders.slice() : [];
+          const remotePendingOrders = Array.isArray(data.pendingOrders) ? data.pendingOrders.map(o => ({ ...o, _remotePending: true })) : [];
+          ordersList = mergeOrdersPreservingLocal(remoteOrders.concat(remotePendingOrders));
+          saveOrdersLocal();
         }
         populateCompanyDropdown();
         populateReportCompanyDropdown();
@@ -2362,9 +2251,24 @@
       if(!isAdminUnlocked)return alert('تعديل المخزون متاح فقط لصاحب المذخر.');
       const item=inventory.find(i=>String(i.id)===String(prodId)); if(!item)return;
       const qty=Math.max(0,Math.floor(Number(value))); if(!Number.isFinite(qty))return;
-      item.quantity=qty; item.totalPrice=qty*Number(item.price||0); localStorage.setItem('samo_inventory_v39',JSON.stringify(inventory)); renderProducts(); renderAlerts();
-      try{await postToApi({action:'update_product',product:item});await loadRemoteData();}catch(e){alert('تم تغيير العدد محلياً لكن تعذر مزامنته مع الشيت.');}
+      const oldQty=Math.max(0,Math.floor(Number(item.quantity)||0));
+      const updated={...item, quantity:qty, totalPrice:qty*Number(item.price||0)};
+      const payload={action:'update_product',product:updated};
+      if(qty!==oldQty){
+        payload.stockOperation={mode:'set',amount:Math.abs(qty-oldQty),reason:'تعديل يدوي صريح لرصيد المخزون'};
+      }
+      try{
+        await postToApi(payload);
+        const local=inventory.find(i=>String(i.id)===String(prodId));
+        if(local) Object.assign(local,updated);
+        localStorage.setItem('samo_inventory_v39',JSON.stringify(inventory));
+        renderProducts(); renderAlerts();
+        await loadRemoteData();
+      }catch(e){
+        alert('لم يتم تغيير الرصيد في الشيت، لذلك أبقيت الرصيد المحلي كما هو.\n\nالسبب: '+(e&&e.message?e.message:e));
+      }
     }
+
     function changeInventoryQty(prodId,delta){const item=inventory.find(i=>String(i.id)===String(prodId));if(!item)return;setInventoryQty(prodId,Number(item.quantity||0)+Number(delta||0));}
 
     function normalizeStockAddInput(prodId){
@@ -2392,7 +2296,7 @@
       const expiryFilter = document.getElementById('filter-expiry').value;
       const stockFilter = document.getElementById('filter-stock').value;
       const formFilter = document.getElementById('filter-form').value;
-      let list = inventory;
+      let list = [...inventory];
       if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)) || (i.company && i.company.toLowerCase().includes(q)));
       if (hideOutStock) list = list.filter(i => i.quantity > 0);
       if (companyFilter) list = list.filter(i => (i.company || '').trim().toLowerCase() === companyFilter.trim().toLowerCase());
@@ -2401,9 +2305,11 @@
       if (stockFilter === 'shortage') list = list.filter(i => Number(i.quantity || 0) <= Number(i.minQty || 5));
       if (expiryFilter) list = list.filter(i => checkExpiryStatus(i.expiryDate) === expiryFilter);
 
+      const arCollator = new Intl.Collator('ar', { sensitivity: 'base', numeric: true });
+      list.sort((a, b) => arCollator.compare(String(a.name || ''), String(b.name || '')));
+
       if (list.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
-        requestAnimationFrame(() => positionProductsCounter(false));
         return;
       }
 
@@ -2432,6 +2338,7 @@
           <div class="prod-card">
             <div class="prod-top"><div class="prod-info-col"><div class="prod-name">${item.name}</div>
             <div style="font-size:11px;color:${checkExpiryStatus(item.expiryDate)==='expired'?'#e11d48':checkExpiryStatus(item.expiryDate)==='near'?'#d97706':'var(--ios-sub)'};font-weight:800;margin-top:-2px;">📅 الصلاحية: ${escapeHtml(formatExpiryForDisplay(item.expiryDate) || item.expiryDate || "غير محدد")} ${checkExpiryStatus(item.expiryDate)==='expired'?'⚠️ منتهي':checkExpiryStatus(item.expiryDate)==='near'?'⏳ قريب':checkExpiryStatus(item.expiryDate)==='valid'?'✓ صالح':''}</div>
+            ${isAdminUnlocked && item.createdAt ? `<div style="font-size:10px;color:var(--ios-sub);font-weight:700;">🕒 تاريخ الإضافة: ${escapeHtml(formatCreatedAt(item.createdAt))}</div>` : ''}
             <div class="prod-sub-info"><span class="badge badge-form">${smartDetectForm(item.name, item.form)}</span> ${item.company ? `<span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${item.company}</span>` : ''}</div></div></div>
             <div class="prod-cart-action-area">${cartActionHtml}</div>
             <div class="prod-bottom"><span class="prod-price">${netPrice.toLocaleString()} د.ع</span><span class="prod-stock-lbl">المتوفر: ${item.quantity}</span></div>
@@ -2440,16 +2347,17 @@
         `;
       }).join('');
       updateBadgeDot();
-      requestAnimationFrame(() => positionProductsCounter(false));
     }
 
     function renderPosProducts() {
       const container = document.getElementById('pos-grid-container');
       if (!container) return;
       const q = document.getElementById('pos-search-box') ? document.getElementById('pos-search-box').value.trim().toLowerCase() : '';
-      let list = inventory;
+      let list = [...inventory];
       if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)));
       if (posHideOutStock) list = list.filter(i => i.quantity > 0);
+      const posCollator = new Intl.Collator('ar', { sensitivity: 'base', numeric: true });
+      list.sort((a, b) => posCollator.compare(String(a.name || ''), String(b.name || '')));
 
       if (list.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--ios-sub); grid-column: span 2;">لا توجد مواد</div>`;
@@ -2540,32 +2448,44 @@
         return { id: p.id, name: p.name, form: smartDetectForm(p.name, p.form), barcode: p.barcode, expiryDate: p.expiryDate || '—', quantity: posCartMap[id], price: net };
       });
 
+      const posNow = new Date();
       const targetOrder = {
-        orderNumber: 'POS-' + Math.floor(1000 + Math.random() * 9000),
+        orderNumber: 'POS-' + posNow.getTime().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900),
         pharmacyName: ph, phone: phone,
         userId: getLocalUserId(),
         totalAmount: newItems.reduce((s, x) => s + (x.price * x.quantity), 0),
         status: 'قيد المراجعة',
-        date: new Date().toLocaleString('ar-IQ'),
+        date: posNow.toLocaleString('ar-IQ'),
+        createdAt: posNow.toISOString(),
         staffName: activeStaffName,
-        items: newItems
+        items: newItems,
+        _localPending: true,
+        _localSeq: posNow.getTime()
       };
 
       rememberUserOrderIdentity(ph, phone);
       ordersList.unshift(targetOrder);
-      posCartMap = {};
-      document.getElementById('pos-ph-name').value = '';
-      document.getElementById('pos-ph-phone').value = '';
+      saveOrdersLocal();
       renderPosProducts();
       renderProducts();
       renderOrders();
 
       try {
-        await postToApi({ action: 'new_order', order: targetOrder });
+        const result = await postToApi({ action: 'new_order', order: targetOrder });
+        const localOrder = ordersList.find(x => String(x.orderNumber) === String(targetOrder.orderNumber));
+        if (localOrder) delete localOrder._localPending;
+        saveOrdersLocal();
+        posCartMap = {};
+        document.getElementById('pos-ph-name').value = '';
+        document.getElementById('pos-ph-phone').value = '';
+        renderPosProducts();
+        renderProducts();
         await loadRemoteData();
-      } catch(e) {}
-      alert("تم إرسال الطلب بنجاح، وهو بانتظار اعتماد صاحب المذخر.");
-      setMainTab('log');
+        alert(result && result.duplicateAlreadyExists ? 'تم العثور على الطلب نفسه في الشيت مسبقاً، ولم تتم إضافة نسخة مكررة.' : 'تم إرسال الطلب بنجاح، وهو بانتظار اعتماد صاحب المذخر.');
+        setMainTab('log');
+      } catch(e) {
+        alert('تعذر تأكيد إرسال الطلب إلى الشيت. بقيت السلة والطلب محفوظين لإعادة المحاولة.\n\nالسبب: ' + (e && e.message ? e.message : e));
+      }
     }
 
     const CART_STORAGE_KEY = 'samo_cart_safe_v1';
@@ -2655,7 +2575,7 @@
         </div>`;
       }).join('');
       document.getElementById('checkout-total-price').innerText = total.toLocaleString() + ' د.ع';
-      document.getElementById('modal-send-order').style.display = 'flex';
+      showModalById('modal-send-order');
     }
     function refreshCheckoutModal() {
       openSendModal();
@@ -2707,16 +2627,54 @@
       }
     }
 
-    function closeSendModal() { document.getElementById('modal-send-order').style.display = 'none'; }
+    function closeSendModal() { hideModalById('modal-send-order'); }
+
+    let sendingOrderInProgress = false;
+
+    function makeOrderSignature(orderOrData) {
+      const o = orderOrData || {};
+      const items = Array.isArray(o.items) ? o.items.map(it => ({
+        id: String(it && it.id || '').trim(),
+        barcode: String(it && it.barcode || '').trim(),
+        name: String(it && it.name || '').trim().toLowerCase().replace(/\s+/g,' '),
+        quantity: Math.floor(Number(it && it.quantity) || 0),
+        price: Number(it && it.price) || 0
+      })).sort((a,b) => {
+        const ak = (a.id || a.barcode || a.name);
+        const bk = (b.id || b.barcode || b.name);
+        return ak.localeCompare(bk);
+      }) : [];
+      return JSON.stringify({
+        userId: String(o.userId || getLocalUserId()).trim(),
+        pharmacyName: String(o.pharmacyName || '').trim().toLowerCase().replace(/\s+/g,' '),
+        phone: normalizePhone(o.phone || ''),
+        items: items
+      });
+    }
+
+    function findLocalDuplicateOrder(order) {
+      const sig = makeOrderSignature(order);
+      return (ordersList || []).find(existing => {
+        if (!existing) return false;
+        if (String(existing.orderNumber || '').trim() === String(order.orderNumber || '').trim()) return false;
+        if (!isOrderMine(existing)) return false;
+        if (!Array.isArray(existing.items) || !existing.items.length) return false;
+        return makeOrderSignature(existing) === sig;
+      }) || null;
+    }
 
     async function confirmOrderSubmission() {
+      if (sendingOrderInProgress) return;
       const ph = document.getElementById('order-ph-name').value.trim();
       const phone = document.getElementById('order-ph-phone').value.trim();
       if (!ph) return alert("يرجى كتابة اسم الصيدلية");
       if (isAdminUnlocked && !activeStaffName) return alert("يرجى اختيار الموظف المجهز من الأعلى!");
 
       cleanCartState();
-      const invalidCart = Object.keys(cartMap).filter(id => {
+      const cartKeys = Object.keys(cartMap);
+      if (!cartKeys.length) return alert('السلة فارغة بعد التحقق من المخزون.');
+
+      const invalidCart = cartKeys.filter(id => {
         const p = inventory.find(i => String(i.id) === String(id));
         return !p || Math.floor(Number(p.quantity) || 0) <= 0 || Math.floor(Number(cartMap[id]) || 0) > Math.floor(Number(p.quantity) || 0);
       });
@@ -2724,38 +2682,99 @@
         cleanCartState();
         return alert('تم تحديث المخزون، وهناك مادة لم تعد متوفرة بالكمية المطلوبة. راجع السلة ثم أرسل الطلب من جديد.');
       }
-      if (Object.keys(cartMap).length === 0) return alert('السلة فارغة بعد التحقق من المخزون.');
 
-      const newItems = Object.keys(cartMap).map(id => {
+      const now = new Date();
+      const createdAt = now.toISOString();
+      const newItems = cartKeys.map(id => {
         const p = inventory.find(i => i.id === id);
         const net = p.bonus > 0 ? Math.round(p.price * (1 - (p.bonus / 100))) : p.price;
-        return { id: p.id, name: p.name, form: smartDetectForm(p.name, p.form), barcode: p.barcode, expiryDate: p.expiryDate || '—', quantity: cartMap[id], price: net };
+        return { id:p.id, name:p.name, form:smartDetectForm(p.name,p.form), barcode:p.barcode, expiryDate:p.expiryDate||'—', quantity:Math.floor(Number(cartMap[id])||0), price:net };
       });
 
       const order = {
-        orderNumber: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
-        pharmacyName: ph, phone: phone,
-        userId: getLocalUserId(),
-        totalAmount: newItems.reduce((s, x) => s + (x.price * x.quantity), 0),
-        status: 'قيد المراجعة',
-        date: new Date().toLocaleString('ar-IQ'),
-        staffName: activeStaffName,
-        items: newItems
+        orderNumber:'ORD-' + now.getTime().toString(36).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900),
+        pharmacyName:ph, phone:phone, userId:getLocalUserId(),
+        totalAmount:newItems.reduce((s,x)=>s+(x.price*x.quantity),0),
+        status:'قيد المراجعة', date:now.toLocaleString('ar-IQ'), createdAt:createdAt,
+        staffName:activeStaffName, items:newItems, _localPending:true, _localSeq:now.getTime()
       };
 
-      rememberUserOrderIdentity(ph, phone);
+      // تحذير قبل إنشاء طلب مطابق سابقاً. يمكن للمستخدم المتابعة صراحةً.
+      const duplicate = findLocalDuplicateOrder(order);
+      let forceDuplicate = false;
+      if (duplicate) {
+        const sameStatus = String(duplicate.status || 'قيد المراجعة').trim();
+        const proceed = confirm(
+          '⚠️ تنبيه: توجد طلبية مطابقة لهذه الطلبية في «طلباتي».\n\n' +
+          'رقم الطلب السابق: ' + String(duplicate.orderNumber || '') + '\n' +
+          'الحالة: ' + sameStatus + '\n\n' +
+          'هل تريد إرسال الطلب مرة أخرى رغم أنه مطابق؟'
+        );
+        if (!proceed) return;
+        forceDuplicate = true;
+      }
+
+      rememberUserOrderIdentity(ph,phone);
       ordersList.unshift(order);
+      saveOrdersLocal();
+
+      // تفريغ السلة فور الضغط على إرسال. الطلب يبقى في «طلباتي».
       cartMap = {};
-      closeSendModal();
+      saveCartState();
       renderProducts();
       renderOrders();
-
-      try {
-        await postToApi({ action: 'new_order', order: order });
-        await loadRemoteData();
-      } catch(e) {}
-      alert("تم إرسال الطلب بنجاح!");
+      closeSendModal();
       setMainTab('log');
+      applyScrollableViewsLayout();
+
+      sendingOrderInProgress = true;
+      try {
+        let result = await postToApi({action:'new_order',order:order,forceDuplicate:forceDuplicate});
+
+        // إذا كان هناك طلب مطابق موجود على الخادم ولم نطلب التجاوز، نعرض تحذيراً ثانياً.
+        if (result && result.duplicateWarning && !forceDuplicate) {
+          const proceed = confirm(
+            '⚠️ توجد طلبية مطابقة موجودة مسبقاً في المستودع.\n\n' +
+            'هل تريد إنشاء نسخة ثانية منها؟'
+          );
+          if (!proceed) {
+            ordersList = ordersList.filter(x => String(x.orderNumber || '') !== String(order.orderNumber || ''));
+            saveOrdersLocal();
+            renderMyOrders();
+            return;
+          }
+          result = await postToApi({action:'new_order',order:order,forceDuplicate:true});
+        }
+
+        const localOrder=ordersList.find(x=>String(x.orderNumber)===String(order.orderNumber));
+        if(localOrder){ delete localOrder._localPending; localOrder._remotePending=true; }
+        saveOrdersLocal();
+        await loadRemoteData();
+        alert(result && result.duplicateAlreadyExists ? 'الطلب موجود مسبقاً ولم تتم إضافة نسخة مكررة.' : 'تم إرسال الطلب وبقي في سجل الطلبات بانتظار اعتماد صاحب المذخر.');
+      } catch(e) {
+        const localOrder=ordersList.find(x=>String(x.orderNumber)===String(order.orderNumber));
+        if(localOrder) localOrder._localPending=true;
+        saveOrdersLocal();
+        try{await loadRemoteData();}catch(syncErr){}
+        alert('تم تفريغ السلة وحفظ الطلب في سجل «طلباتي»، لكن لم نتأكد من وصوله للمستودع. استخدم «إعادة إرسال» من السجل إذا لزم.\n\nالسبب: ' + (e&&e.message?e.message:e));
+      } finally {
+        sendingOrderInProgress=false;
+      }
+    }
+
+    async function resendPendingOrder(idx){
+      const order=ordersList[idx];
+      if(!order || !isReviewStatus(order) || !isOrderMine(order)) return;
+      try{
+        const result=await postToApi({action:'new_order',order:order});
+        delete order._localPending; order._remotePending=true;
+        saveOrdersLocal();
+        await loadRemoteData();
+        alert(result&&result.duplicateAlreadyExists ? 'الطلب موجود مسبقاً ولم تتم إضافة نسخة مكررة.' : 'تمت إعادة إرسال الطلب بنجاح وبقي بانتظار الاعتماد.');
+      }catch(e){
+        order._localPending=true; saveOrdersLocal();
+        alert('تعذر إعادة إرسال الطلب.\n\nالسبب: ' + (e&&e.message?e.message:e));
+      }
     }
 
     function isDeliveredStatus(o) {
@@ -2769,7 +2788,7 @@
     function renderIncomingOrders() {
       const container = document.getElementById('incoming-orders-container');
       if (!container) return;
-      const incoming = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => isReviewStatus(x.o));
+      const incoming = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => isReviewStatus(x.o)).sort((a,b) => orderDateValue(b.o) - orderDateValue(a.o));
       const badge = document.getElementById('incoming-count-badge');
       if (badge) { badge.innerText = incoming.length; badge.style.display = incoming.length ? 'inline-block' : 'none'; }
       if (!incoming.length) {
@@ -2782,9 +2801,32 @@
           <div style="font-size:11px;color:var(--ios-sub);margin-top:3px;">📅 ${escapeHtml(o.date)} | المواد: ${(o.items||[]).length} | المبلغ المطلوب: ${(o.totalAmount||0).toLocaleString()} د.ع</div>
           <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;">
             <button class="btn" style="background:var(--ios-green);" onclick="openInspectModal(${idx})">🔎 فحص وتعديل</button>
+            <button class="btn btn-danger" onclick="deleteIncomingOrder(${idx})">🗑️ حذف نهائي</button>
             <button class="btn btn-sec" onclick="printInvoiceA4(${idx})">طباعة A4</button>
           </div>
         </div>`).join('');
+    }
+
+    async function deleteIncomingOrder(idx) {
+      if (!isAdminUnlocked) return alert('حذف الطلبيات الواردة متاح فقط لصاحب المذخر.');
+      const order = ordersList[idx];
+      if (!order || !isReviewStatus(order)) return alert('لا يمكن حذف طلبية تم اعتمادها أو تجهيزها أو تسليمها.');
+      const orderNumber = String(order.orderNumber || '').trim();
+      if (!orderNumber) return alert('رقم الطلب غير موجود.');
+      if (!confirm(`هل أنت متأكد من حذف الطلبية ${orderNumber} نهائياً؟\n\nلن يتم خصم أو إعادة أي كمية من المخزون.`)) return;
+
+      try {
+        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
+        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+        saveOrdersLocal();
+        closeInspectModal();
+        renderIncomingOrders();
+        renderOrders();
+        await loadRemoteData();
+        alert('تم حذف الطلبية نهائياً قبل الاعتماد.');
+      } catch (e) {
+        alert('لم يتم حذف الطلبية. لم أغيّر السجل المحلي.\n\nالسبب: ' + (e && e.message ? e.message : e));
+      }
     }
 
     async function approveIncomingOrder(idx) {
@@ -2814,16 +2856,19 @@
       const identity = getUserOrderIdentity();
       const uid = identity.userId;
       const phone = normalizePhone(identity.phone);
-      const name = String(identity.pharmacyName || '').trim().toLowerCase();
+      const deletedMine = getDeletedMyOrderSet();
 
       const mine = (ordersList || []).map((o, idx) => ({o, idx})).filter(({o}) => {
+        const orderNumber = String(o && o.orderNumber || '').trim();
+        if (!orderNumber || deletedMine.has(orderNumber)) return false;
+
         const ouid = String(o.userId || '').trim();
         const oph = normalizePhone(o.phone || '');
-        const oname = String(o.pharmacyName || '').trim().toLowerCase();
         if (ouid && uid && ouid === uid) return true;
         if (phone && oph && phone === oph) return true;
+        if (o._localPending && isOrderMine(o)) return true;
         return false;
-      }).sort((a,b) => String(b.o.date || '').localeCompare(String(a.o.date || '')));
+      }).sort((a,b) => orderDateValue(b.o) - orderDateValue(a.o));
 
       if (!mine.length) {
         container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--ios-sub);">لا توجد طلبيات مرسلة من هذا الجهاز بعد.</div>';
@@ -2845,25 +2890,26 @@
           </div>
         `).join('') : '<div style="padding:8px;color:var(--ios-sub);">لا توجد تفاصيل محفوظة لهذه الطلبية.</div>';
 
+        const editPart = review
+          ? `<button class="btn" style="font-size:11px;padding:5px 9px;background:var(--ios-blue);" onclick="openInspectModal(${idx})">✏️ فحص وتعديل</button>${o._localPending ? `<button class="btn" style="font-size:11px;padding:5px 9px;background:var(--ios-orange);" onclick="resendPendingOrder(${idx})">↻ إعادة إرسال</button>` : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">✅ بانتظار الاعتماد</span>`}`
+          : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">الطلب محفوظ حتى تحذفه من «طلباتي»</span>`;
+
         return `
           <div class="prod-card" style="border-right:4px solid ${review ? 'var(--ios-orange)' : (delivered ? 'var(--ios-blue)' : 'var(--ios-green)')};">
             <div style="display:flex;justify-content:space-between;gap:8px;font-weight:800;">
               <span>📦 ${escapeHtml(o.orderNumber || '')}</span>
               <span class="badge" style="background:${statusBg};color:${statusColor};">${statusText}</span>
             </div>
-            <div style="font-size:11px;color:var(--ios-sub);margin-top:4px;">
-              📅 ${escapeHtml(o.date || '—')}
-            </div>
-            <div style="font-size:12px;margin-top:6px;">
-              <b>${items.length}</b> مادة | الإجمالي: <b style="color:var(--ios-green);">${Number(o.totalAmount || 0).toLocaleString()} د.ع</b>
-            </div>
+            <div style="font-size:11px;color:var(--ios-sub);margin-top:4px;">📅 ${escapeHtml(o.date || '—')}</div>
+            <div style="font-size:12px;margin-top:6px;"><b>${items.length}</b> مادة | الإجمالي: <b style="color:var(--ios-green);">${Number(o.totalAmount || 0).toLocaleString()} د.ع</b></div>
             <details style="margin-top:8px;">
               <summary style="cursor:pointer;font-weight:800;font-size:12px;">عرض المواد والتفاصيل</summary>
               <div style="margin-top:6px;">${itemsHtml}</div>
               ${o.deliveryStaffName ? `<div style="font-size:11px;color:var(--ios-sub);margin-top:6px;">🚚 موظف التسليم: ${escapeHtml(o.deliveryStaffName)}${o.deliveredAt ? ' | ' + escapeHtml(o.deliveredAt) : ''}</div>` : ''}
             </details>
-            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;flex-wrap:wrap;">
-              ${review ? `<button class="btn btn-danger" style="font-size:11px;padding:5px 9px;" onclick="deleteMyOrderRecord(${idx})">إلغاء الطلب</button>` : `<span style="font-size:10px;color:var(--ios-sub);padding:6px;">لا يمكن إلغاء الطلب بعد الاعتماد</span>`}
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+              ${editPart}
+              <button class="btn btn-danger" style="font-size:11px;padding:5px 9px;" onclick="deleteMyOrderRecord(${idx})">🗑️ حذف من طلباتي</button>
               <button class="btn btn-sec" style="font-size:11px;padding:5px 9px;" onclick="printInvoiceA4(${idx})">طباعة A4</button>
             </div>
           </div>
@@ -2873,17 +2919,36 @@
 
     async function deleteMyOrderRecord(idx) {
       const o = ordersList[idx];
-      if (!o || !isReviewStatus(o)) return alert('لا يمكن إلغاء طلبية تم اعتمادها أو تجهيزها أو تسليمها.');
-      if (!confirm(`هل أنت متأكد من إلغاء الطلبية ${o.orderNumber}؟`)) return;
+      if (!o || !isOrderMine(o)) return alert('هذه الطلبية ليست ضمن طلبات هذا الموظف.');
+      const orderNumber = String(o.orderNumber || '').trim();
+      if (!orderNumber) return alert('رقم الطلب غير موجود.');
+
+      const approvedOrDelivered = isApprovedStatus(o) || isDeliveredStatus(o);
+      const confirmText = approvedOrDelivered
+        ? `حذف الطلبية ${orderNumber} من «طلباتي»؟\n\nسيتم إخفاؤها من سجل الموظف فقط، ولن يتم حذف سجلها المعتمد من Google Sheets.`
+        : `حذف الطلبية ${orderNumber} نهائياً من «طلباتي»؟\n\nالطلب قيد المراجعة ولم يُعتمد بعد.`;
+      if (!confirm(confirmText)) return;
+
+      if (approvedOrDelivered) {
+        // الطلب المعتمد/المسلّم يبقى في Google Sheets كسجل رسمي، ويُحذف فقط من «طلباتي» لهذا الجهاز.
+        markMyOrderDeleted(orderNumber);
+        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+        saveOrdersLocal();
+        renderMyOrders();
+        alert('تم حذف الطلبية من «طلباتي» فقط. السجل المعتمد في Google Sheets لم يتغير.');
+        return;
+      }
 
       try {
-        await postToApi({ action: 'delete_order', orderNumber: o.orderNumber });
-        ordersList.splice(idx, 1);
-        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
+        markMyOrderDeleted(orderNumber);
+        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+        saveOrdersLocal();
         renderMyOrders();
-        alert('تم إلغاء الطلبية قبل اعتمادها.');
+        renderIncomingOrders();
+        alert('تم حذف الطلبية قبل اعتمادها.');
       } catch (e) {
-        alert('تعذر إلغاء الطلبية.\n\nالسبب: ' + (e.message || e));
+        alert('تعذر حذف الطلبية قيد المراجعة.\n\nالسبب: ' + (e.message || e));
       }
     }
 
@@ -2897,7 +2962,7 @@
         const sub = document.getElementById('log-view-subtitle');
         if (title) title.innerText = 'طلباتي';
         if (viewTitle) viewTitle.innerText = 'طلباتي';
-        if (sub) sub.innerText = 'الطلبات التي أرسلتها، مع المواد والتاريخ والوقت وحالة الطلب.';
+        if (sub) sub.innerText = 'الطلبات التي أرسلتها محفوظة هنا، ويمكن تعديلها قبل الاعتماد. لا تُحفظ في Google Sheets إلا بعد الاعتماد.';
         renderMyOrders();
         return;
       }
@@ -2908,7 +2973,7 @@
       if (title) title.innerText = 'سجل الصادر';
       if (viewTitle) viewTitle.innerText = 'سجل الصادر والطلبات';
       if (sub) sub.innerText = 'الطلبات المجهزة والمسلمة، وتتم مزامنتها مباشرة من Google Sheets.';
-      const outgoing = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => !isReviewStatus(x.o));
+      const outgoing = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => !isReviewStatus(x.o)).sort((a,b) => orderDateValue(b.o) - orderDateValue(a.o));
       if (!outgoing.length) { container.innerHTML='<div style="text-align:center;padding:40px;color:var(--ios-sub);">لا توجد قوائم صادرة مجهزة أو مسلمة</div>'; return; }
       container.innerHTML = outgoing.map(({o,idx}) => {
         const delivered=isDeliveredStatus(o), ready=isApprovedStatus(o);
@@ -3109,12 +3174,13 @@
       if (t === 'pos' && isAdminUnlocked) renderPosProducts();
       if (t === 'home') requestAnimationFrame(lockSearchWhileProductsScroll);
       if (t === 'log') { renderOrders(); }
+      requestAnimationFrame(applyScrollableViewsLayout);
     }
 
-    function openAddModal() { document.getElementById('modal-add-item').style.display = 'flex'; const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
-    function closeAddModal() { document.getElementById('modal-add-item').style.display = 'none'; }
+    function openAddModal() { showModalById('modal-add-item'); const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
+    function closeAddModal() { hideModalById('modal-add-item'); }
     function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
-    function closeCameraScanner() { document.getElementById('modal-scanner').style.display = 'none'; }
+    function closeCameraScanner() { hideModalById('modal-scanner'); }
 
 
     function openEditItemModal(prodId) {
@@ -3132,7 +3198,7 @@
       document.getElementById('edit-price').value = item.price ?? 0;
       document.getElementById('edit-bonus').value = item.bonus ?? 0;
       document.getElementById('edit-exp').value = item.expiryDate || '';
-      document.getElementById('modal-edit-item').style.display = 'flex';
+      showModalById('modal-edit-item');
     }
 
     function closeEditModal() {
@@ -3146,31 +3212,48 @@
       const item = inventory.find(i => String(i.id) === String(id));
       if (!item) return alert("لم يتم العثور على المادة.");
 
-      item.name = document.getElementById('edit-name').value.trim();
-      item.image = document.getElementById('edit-image').value.trim();
-      item.company = document.getElementById('edit-company').value.trim();
-      item.form = document.getElementById('edit-form').value.trim() || 'Tablet';
-      item.barcode = document.getElementById('edit-barcode').value.trim();
-      item.quantity = Math.max(0, Number(document.getElementById('edit-qty').value) || 0);
-      item.minQty = Math.max(0, Number(document.getElementById('edit-min-qty').value) || 5);
-      item.price = Math.max(0, Number(document.getElementById('edit-price').value) || 0);
-      item.bonus = Math.max(0, Number(document.getElementById('edit-bonus').value) || 0);
-      item.expiryDate = document.getElementById('edit-exp').value.trim();
+      const oldQty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      const updated = {
+        ...item,
+        name: document.getElementById('edit-name').value.trim(),
+        image: document.getElementById('edit-image').value.trim(),
+        company: document.getElementById('edit-company').value.trim(),
+        form: document.getElementById('edit-form').value.trim() || 'Tablet',
+        barcode: document.getElementById('edit-barcode').value.trim(),
+        quantity: Math.max(0, Number(document.getElementById('edit-qty').value) || 0),
+        minQty: Math.max(0, Number(document.getElementById('edit-min-qty').value) || 5),
+        price: Math.max(0, Number(document.getElementById('edit-price').value) || 0),
+        bonus: Math.max(0, Number(document.getElementById('edit-bonus').value) || 0),
+        expiryDate: document.getElementById('edit-exp').value.trim()
+      };
 
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      populateReportCompanyDropdown();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-      closeEditModal();
+      const newQty = Math.max(0, Math.floor(Number(updated.quantity) || 0));
+      updated.quantity = newQty;
+      updated.totalPrice = newQty * Number(updated.price || 0);
+
+      const payload = { action: 'update_product', product: updated };
+      if (newQty !== oldQty) {
+        payload.stockOperation = {
+          mode: 'set',
+          amount: Math.abs(newQty - oldQty),
+          reason: 'تعديل يدوي صريح لرصيد المخزون من نافذة تعديل المادة'
+        };
+      }
 
       try {
-        await postToApi({ action: 'update_product', product: item });
+        await postToApi(payload);
+        Object.assign(item, updated);
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+        populateCompanyDropdown();
+        populateReportCompanyDropdown();
+        renderAlerts();
+        renderProducts();
+        renderPosProducts();
+        closeEditModal();
         await loadRemoteData();
         alert("تم حفظ تعديل المادة ومزامنته مع الشيت.");
       } catch (e) {
-        alert("تم حفظ التعديل محلياً، لكن تعذر ترحيله إلى الشيت.");
+        alert('لم يتم حفظ التعديل في الشيت، لذلك لم أغيّر النسخة المحلية.\n\nالسبب: ' + (e && e.message ? e.message : e));
       }
     }
 
@@ -3233,10 +3316,23 @@
         await loadRemoteData();
         alert("تمت إضافة المادة وترحيلها إلى الشيت.");
       } catch (e) {
-        const localAdded = inventory.find(x => x.id === p.id);
-        if (localAdded) localAdded._syncPending = true;
-        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-        alert("تم حفظ المادة على هذا الجهاز، لكن لم يتأكد وصولها إلى الشيت.\n\nالسبب: " + (e.message || e) + "\n\nلا تعِد الإضافة مرة ثانية حتى تتأكد من الشيت، لتجنب تكرار المادة.");
+        const msg = e && e.message ? e.message : String(e || 'خطأ غير معروف');
+        if (/موجودة مسبقاً|مكررة|duplicate/i.test(msg)) {
+          inventory = inventory.filter(x => String(x.id) !== String(p.id));
+          localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+          populateCompanyDropdown();
+          populateReportCompanyDropdown();
+          renderAlerts();
+          renderProducts();
+          renderPosProducts();
+          await loadRemoteData();
+          alert('المادة موجودة مسبقاً في الشيت، لذلك لم تتم إضافة نسخة جديدة.');
+        } else {
+          const localAdded = inventory.find(x => x.id === p.id);
+          if (localAdded) localAdded._syncPending = true;
+          localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+          alert("تم حفظ المادة على هذا الجهاز، لكن لم يتأكد وصولها إلى الشيت.\n\nالسبب: " + msg + "\n\nلا تعِد الإضافة مرة ثانية حتى تتأكد من الشيت، لتجنب تكرار المادة.");
+        }
       }
     }
 
@@ -3360,7 +3456,7 @@
       if (!isAdminUnlocked) return alert("طباعة الباركود متاحة فقط لصاحب المذخر.");
       currentBarcodePrintData = { name: name || '', barcode: barcode || '', price: Number(price) || 0 };
       applyPrintSettings();
-      document.getElementById('modal-direct-barcode').style.display = 'flex';
+      showModalById('modal-direct-barcode');
       renderBarcodePreview();
       refreshPrintPrinters();
     }
@@ -3434,18 +3530,30 @@
       if (!order) return;
       const st = String(order.status || '').trim().toLowerCase();
       const delivered = ['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(st);
-      if (!delivered && !isAdminUnlocked) return alert("فحص الطلبات وتعديلها متاح فقط لصاحب المذخر.");
-      if (!delivered && ['معتمد','معتمد للتجهيز','approved'].includes(st)) return alert("القائمة معتمدة للتجهيز ولا يمكن تعديلها بعد الاعتماد.");
+      const approved = ['معتمد','معتمد للتجهيز','approved'].includes(st);
+      const mine = isOrderMine(order);
+      if (!delivered && approved) return alert("القائمة معتمدة للتجهيز ولا يمكن تعديلها بعد الاعتماد.");
+      if (!delivered && !isAdminUnlocked && !mine) return alert("يمكنك تعديل طلبياتك أنت فقط قبل الاعتماد.");
       currentInspectingOrderIndex = idx;
-      document.getElementById('inspect-modal-title').innerText = delivered ? 'إرجاع مواد من الطلبية ' + order.orderNumber : 'فحص وتعديل الطلبية ' + order.orderNumber;
+      document.getElementById('inspect-modal-title').innerText = delivered ? 'إرجاع مواد من الطلبية ' + order.orderNumber : (isAdminUnlocked ? 'فحص وتعديل الطلبية ' + order.orderNumber : 'فحص وتعديل طلبك ' + order.orderNumber);
       renderInspectOrderItems();
       const saveBtn = document.getElementById('inspect-save-btn');
-      if (saveBtn) saveBtn.style.display = delivered ? 'none' : 'inline-flex';
-      document.getElementById('modal-inspect-order').style.display = 'flex';
+      if (saveBtn) {
+        saveBtn.style.display = delivered ? 'none' : 'inline-flex';
+        saveBtn.textContent = isAdminUnlocked ? 'اعتماد وتجهيز ✓' : 'حفظ التعديلات';
+        saveBtn.style.background = isAdminUnlocked ? 'var(--ios-green)' : 'var(--ios-blue)';
+      }
+      const delBtn = document.getElementById('inspect-delete-btn');
+      if (delBtn) {
+        delBtn.style.display = (!delivered && isAdminUnlocked && isReviewStatus(order)) ? 'inline-flex' : 'none';
+      }
+      showModalById('modal-inspect-order');
     }
 
     function closeInspectModal() {
       currentInspectingOrderIndex = null;
+      const delBtn = document.getElementById('inspect-delete-btn');
+      if (delBtn) delBtn.style.display = 'none';
       const el = document.getElementById('modal-inspect-order');
       if (el) el.style.display = 'none';
     }
@@ -3520,16 +3628,31 @@
       if (currentInspectingOrderIndex === null) return;
       const order = ordersList[currentInspectingOrderIndex];
       if (!order) return;
-      if (!isAdminUnlocked) return alert("هذه العملية متاحة فقط لصاحب المذخر.");
-      if (['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(String(order.status || '').trim().toLowerCase())) return alert("القائمة تم تسليمها ولا يمكن تعديلها.");
+      const st = String(order.status || '').trim().toLowerCase();
+      const delivered = ['مستلم','مسلّم','مسلم','مسلّمة','مسلمة','delivered'].includes(st);
+      if (delivered) return alert('القائمة تم تسليمها ولا يمكن تعديلها.');
+      if (!isAdminUnlocked && !isOrderMine(order)) return alert('لا يمكنك تعديل هذه الطلبية.');
       recalcInspectOrder();
-      if (isReviewStatus(order)) {
-        return approveIncomingOrder(currentInspectingOrderIndex);
+
+      if (!isAdminUnlocked) {
+        if (!confirm('حفظ تعديلات الطلبية؟')) return;
+        try {
+          await postToApi({ action: 'update_order', order: order });
+          delete order._localPending;
+          order._remotePending = true;
+          saveOrdersLocal();
+          await loadRemoteData();
+          closeInspectModal();
+          alert('تم حفظ تعديل الطلبية وبقيت في سجل «طلباتي» بانتظار الاعتماد.');
+        } catch (e) {
+          order._localPending = true;
+          saveOrdersLocal();
+          alert('تعذر مزامنة تعديل الطلبية مع المستودع. بقيت التعديلات محفوظة ويمكن إعادة المحاولة.\n\nالسبب: ' + (e && e.message ? e.message : e));
+        }
+        return;
       }
-      if (!confirm("حفظ تعديلات هذه الطلبية؟")) return;
-      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList)); renderOrders();
-      try { await postToApi({ action: 'update_order', order: order }); await loadRemoteData(); closeInspectModal(); alert("تم حفظ تعديل الطلب ومزامنة المخزون والشيت."); }
-      catch (e) { alert("تم حفظ التعديل محلياً، لكن تعذر مزامنته مع الشيت."); }
+
+      if (isReviewStatus(order)) return approveIncomingOrder(currentInspectingOrderIndex);
     }
 
     async function markOrderDelivered(idx) {
