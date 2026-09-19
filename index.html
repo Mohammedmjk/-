@@ -243,38 +243,63 @@
     #search-box.search-input, #pos-search-box.search-input { padding-left: 78px; }
     .search-clear-btn:hover { background: #8e8e93; }
 
-    /* عداد المخزن يظهر بجانب القائمة ويتابع موضع التمرير */
-    .products-scroll-counter {
+    /* عداد المواد مدمج داخل مؤشر شريط التمرير نفسه */
+    #view-home { position: relative !important; }
+    #prod-list-container {
+      position: relative !important;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-right: 22px !important;
+    }
+    #prod-list-container::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
+
+    .products-scrollbar {
       position: absolute;
-      right: 6px;
-      top: 8px;
-      z-index: 8;
-      margin: 0;
-      padding: 5px 7px;
+      top: 4px;
+      right: 3px;
+      bottom: 4px;
+      width: 18px;
+      z-index: 20;
+      border-radius: 10px;
+      background: rgba(229,229,234,.55);
+      user-select: none;
+      touch-action: none;
+    }
+    .products-scrollbar-thumb {
+      position: absolute;
+      left: 1px;
+      right: 1px;
+      top: 0;
+      min-height: 46px;
       border-radius: 9px;
-      background: rgba(255,255,255,.94);
-      border: 1px solid var(--ios-border);
-      box-shadow: 0 2px 7px rgba(0,0,0,.10);
-      font-size: 9px;
-      font-weight: 800;
-      color: var(--ios-sub);
+      background: rgba(120,120,128,.72);
+      border: 1px solid rgba(255,255,255,.8);
+      box-shadow: 0 1px 4px rgba(0,0,0,.16);
       display: flex;
       align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: grab;
+      touch-action: none;
+    }
+    .products-scrollbar-thumb:active { cursor: grabbing; }
+    .products-scroll-counter-text {
+      display: block;
+      width: 100%;
+      padding: 4px 2px;
+      box-sizing: border-box;
+      color: #fff;
+      font-size: 8px;
+      font-weight: 900;
+      line-height: 1.15;
+      text-align: center;
       direction: rtl;
+      white-space: normal;
+      word-break: keep-all;
       pointer-events: none;
-      backdrop-filter: blur(8px);
-      white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0,0,0,.35);
     }
-    .products-scroll-counter-text { flex: 0 0 auto; white-space: nowrap; }
-    .products-scroll-track {
-      display: none;
-    }
-    .products-scroll-progress {
-      width: 0%;
-      height: 0;
-    }
-    #view-home { position: relative !important; }
-    #prod-list-container { position: relative !important; }
+    .products-scroll-track, .products-scroll-progress { display: none !important; }
     .prod-last-request {
       margin-top: 4px;
       font-size: 10px;
@@ -866,9 +891,10 @@
     </div>
 
     <div class="product-list" id="prod-list-container"></div>
-    <div class="products-scroll-counter" id="products-scroll-counter">
-      <span class="products-scroll-counter-text" id="products-scroll-counter-text">📦 المواد 0–0 من 0</span>
-      <span class="products-scroll-track"><span class="products-scroll-progress" id="products-scroll-progress"></span></span>
+    <div class="products-scrollbar" id="products-scrollbar" aria-hidden="true">
+      <div class="products-scrollbar-thumb" id="products-scrollbar-thumb">
+        <span class="products-scroll-counter-text" id="products-scroll-counter-text">📦 0–0/0</span>
+      </div>
     </div>
   </div>
 
@@ -1769,30 +1795,40 @@
       renderSearchSuggestions();
     }
 
+    let productsScrollbarDrag = null;
+
     function updateProductsScrollCounter() {
       const list = document.getElementById('prod-list-container');
       const text = document.getElementById('products-scroll-counter-text');
-      const progress = document.getElementById('products-scroll-progress');
-      if (!list || !text || !progress) return;
+      const scrollbar = document.getElementById('products-scrollbar');
+      const thumb = document.getElementById('products-scrollbar-thumb');
+      if (!list || !text || !scrollbar || !thumb) return;
 
       const cards = Array.from(list.querySelectorAll('.prod-card'));
       const total = cards.length;
-      if (!total) {
-        text.textContent = '📦 المواد 0–0 من 0';
-        progress.style.width = '0%';
+      const viewport = list.clientHeight;
+      const content = list.scrollHeight;
+      const maxScroll = Math.max(0, content - viewport);
+
+      if (!total || !viewport || content <= viewport + 1) {
+        text.textContent = `📦 ${total ? '1–' + total : '0–0'}/${total}`;
+        thumb.style.top = '0px';
+        thumb.style.height = '100%';
+        scrollbar.style.display = total ? 'flex' : 'none';
         return;
       }
 
-      const top = list.scrollTop;
-      const bottom = top + list.clientHeight;
+      scrollbar.style.display = 'block';
+      const trackHeight = scrollbar.clientHeight;
+      const minThumb = 46;
+      const thumbHeight = Math.max(minThumb, Math.round(trackHeight * viewport / content));
+      const travel = Math.max(0, trackHeight - thumbHeight);
+      const ratio = maxScroll ? list.scrollTop / maxScroll : 0;
+      thumb.style.height = thumbHeight + 'px';
+      thumb.style.top = Math.round(travel * ratio) + 'px';
 
-      // يتحرك العداد مع موضع التمرير داخل قائمة المخزن
-      const counter = document.getElementById('products-scroll-counter');
-      if (counter) {
-        const maxScroll = Math.max(1, list.scrollHeight - list.clientHeight);
-        const y = 8 + (top / maxScroll) * Math.max(0, list.clientHeight - counter.offsetHeight - 16);
-        counter.style.top = y + 'px';
-      }
+      const top = list.scrollTop;
+      const bottom = top + viewport;
       let first = cards.findIndex(card => (card.offsetTop + card.offsetHeight) > top + 2);
       if (first < 0) first = 0;
       let last = cards.length - 1;
@@ -1801,11 +1837,67 @@
 
       const startNo = first + 1;
       const endNo = Math.min(total, Math.max(startNo, last + 1));
-      text.textContent = `📦 المواد ${startNo}–${endNo} من ${total}`;
+      text.textContent = `📦 ${startNo}–${endNo}/${total}`;
+    }
 
-      const maxScroll = Math.max(1, list.scrollHeight - list.clientHeight);
-      const pct = Math.max(0, Math.min(100, (top / maxScroll) * 100));
-      progress.style.width = pct.toFixed(1) + '%';
+    function initProductsScrollbar() {
+      const list = document.getElementById('prod-list-container');
+      const scrollbar = document.getElementById('products-scrollbar');
+      const thumb = document.getElementById('products-scrollbar-thumb');
+      if (!list || !scrollbar || !thumb || scrollbar.dataset.ready === '1') return;
+      scrollbar.dataset.ready = '1';
+
+      list.addEventListener('scroll', updateProductsScrollCounter, {passive:true});
+      window.addEventListener('resize', updateProductsScrollCounter);
+
+      scrollbar.addEventListener('pointerdown', (e) => {
+        if (e.target === thumb || thumb.contains(e.target)) return;
+        const rect = scrollbar.getBoundingClientRect();
+        const trackHeight = scrollbar.clientHeight;
+        const thumbHeight = thumb.offsetHeight;
+        const y = Math.max(0, Math.min(trackHeight - thumbHeight, e.clientY - rect.top - thumbHeight / 2));
+        const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
+        const travel = Math.max(1, trackHeight - thumbHeight);
+        list.scrollTop = (y / travel) * maxScroll;
+      });
+
+      thumb.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        thumb.setPointerCapture(e.pointerId);
+        productsScrollbarDrag = {
+          startY: e.clientY,
+          startTop: thumb.offsetTop,
+          pointerId: e.pointerId
+        };
+      });
+
+      thumb.addEventListener('pointermove', (e) => {
+        if (!productsScrollbarDrag || productsScrollbarDrag.pointerId !== e.pointerId) return;
+        const trackHeight = scrollbar.clientHeight;
+        const thumbHeight = thumb.offsetHeight;
+        const travel = Math.max(1, trackHeight - thumbHeight);
+        const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
+        const newTop = Math.max(0, Math.min(travel, productsScrollbarDrag.startTop + (e.clientY - productsScrollbarDrag.startY)));
+        list.scrollTop = (newTop / travel) * maxScroll;
+      });
+
+      const stopDrag = (e) => {
+        if (productsScrollbarDrag && (e.pointerId === undefined || e.pointerId === productsScrollbarDrag.pointerId)) {
+          productsScrollbarDrag = null;
+        }
+      };
+      thumb.addEventListener('pointerup', stopDrag);
+      thumb.addEventListener('pointercancel', stopDrag);
+      thumb.addEventListener('lostpointercapture', () => { productsScrollbarDrag = null; });
+
+      updateProductsScrollCounter();
+    }
+
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initProductsScrollbar);
+    } else {
+      initProductsScrollbar();
     }
 
     function getLastRequestedInfo(product) {
