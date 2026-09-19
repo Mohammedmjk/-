@@ -749,13 +749,25 @@
     }
 
 
-    /* إصلاح تمرير القوائم داخل الإطار */
-    #view-incoming, #view-log, #view-staff {
+    /* إصلاح تمرير القوائم: الموظفين والتقارير يتم تمرير الصفحة نفسها */
+    #view-incoming, #view-log {
       min-height: 0 !important;
       overflow: hidden !important;
     }
 
+    #view-staff,
     #view-reports {
+      min-height: 0 !important;
+      max-height: calc(100vh - 115px) !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior-y: contain;
+      padding-bottom: 30px;
+      touch-action: pan-y;
+    }
+
+    #incoming-orders-container, #orders-list-container {
       min-height: 0 !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
@@ -764,29 +776,6 @@
       padding-bottom: 24px;
     }
 
-    #incoming-orders-container, #orders-list-container, #staff-report-container {
-      min-height: 0 !important;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      padding-bottom: 24px;
-    }
-
-    /* قائمة الموظفين: اجعل منطقة الموظفين نفسها قابلة للتمرير */
-    #view-staff #staff-report-container {
-      flex: 1 1 auto !important;
-      height: auto !important;
-      max-height: none !important;
-      min-height: 0 !important;
-    }
-
-    /* التقارير المالية: تمرير كامل محتوى صفحة التقارير */
-    #view-reports {
-      box-sizing: border-box;
-      height: calc(100vh - 120px);
-      max-height: calc(100vh - 120px);
-    }
     #modal-send-order, #modal-inspect-order {
       align-items: center !important;
       justify-content: center !important;
@@ -1606,8 +1595,7 @@
     function applyScrollableViewsLayout() {
       const pairs = [
         ['view-incoming', 'incoming-orders-container'],
-        ['view-log', 'orders-list-container'],
-        ['view-staff', 'staff-report-container']
+        ['view-log', 'orders-list-container']
       ];
       const header = document.querySelector('body > header');
       const tabs = document.querySelector('body > .tabs-bar');
@@ -1629,19 +1617,6 @@
         container.style.webkitOverflowScrolling = 'touch';
         container.style.overscrollBehavior = 'contain';
       });
-
-      /* التقارير المالية لا تحتوي على قائمة داخلية واحدة،
-         لذلك يكون التمرير على كامل صفحة التقارير. */
-      const reportsView = document.getElementById('view-reports');
-      if (reportsView) {
-        reportsView.style.height = h + 'px';
-        reportsView.style.maxHeight = h + 'px';
-        reportsView.style.minHeight = '0';
-        reportsView.style.overflowY = 'auto';
-        reportsView.style.overflowX = 'hidden';
-        reportsView.style.webkitOverflowScrolling = 'touch';
-        reportsView.style.overscrollBehavior = 'contain';
-      }
     }
 
 
@@ -3543,23 +3518,27 @@
       if (t === 'pos' && isAdminUnlocked) renderPosProducts();
       if (t === 'home') requestAnimationFrame(() => { lockSearchWhileProductsScroll(); updateProductsScrollCounter(); });
       if (t === 'log') { renderOrders(); }
+      requestAnimationFrame(applyScrollableViewsLayout);
       requestAnimationFrame(() => {
         applyScrollableViewsLayout();
-        if (t === 'staff') {
-          const staffList = document.getElementById('staff-report-container');
-          if (staffList) {
-            staffList.style.overflowY = 'auto';
-            staffList.style.webkitOverflowScrolling = 'touch';
-          }
+
+        const staffView = document.getElementById('view-staff');
+        if (staffView) {
+          staffView.style.overflowY = 'auto';
+          staffView.style.overflowX = 'hidden';
+          staffView.style.maxHeight = 'calc(100vh - 115px)';
+          staffView.style.touchAction = 'pan-y';
         }
-        if (t === 'reports') {
-          const reportsView = document.getElementById('view-reports');
-          if (reportsView) {
-            reportsView.style.overflowY = 'auto';
-            reportsView.style.webkitOverflowScrolling = 'touch';
-          }
+
+        const reportsView = document.getElementById('view-reports');
+        if (reportsView) {
+          reportsView.style.overflowY = 'auto';
+          reportsView.style.overflowX = 'hidden';
+          reportsView.style.maxHeight = 'calc(100vh - 115px)';
+          reportsView.style.touchAction = 'pan-y';
         }
       });
+
     }
 
     function openAddModal() { showModalById('modal-add-item'); const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
