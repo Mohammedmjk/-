@@ -243,46 +243,44 @@
     #search-box.search-input, #pos-search-box.search-input { padding-left: 78px; }
     .search-clear-btn:hover { background: #8e8e93; }
 
-    /* عداد جانبي مستقل: لا يغطي اسم الدواء، ويتحرك من بداية القائمة مع التمرير */
-    #view-home { position: relative !important; }
+    /* عداد صغير داخل قائمة الأدوية ويتحرك معها أثناء التمرير */
     #prod-list-container {
-      position: relative !important;
-      padding-right: 86px !important;
-      box-sizing: border-box !important;
+      padding-right: 0 !important;
     }
+
     .products-scroll-counter {
-      position: absolute;
-      right: 8px;
-      top: 8px;
-      z-index: 30;
-      width: 68px;
-      min-height: 42px;
-      margin: 0;
-      padding: 6px 4px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, #007aff, #5856d6);
-      border: 2px solid rgba(255,255,255,.95);
-      box-shadow: 0 3px 12px rgba(0,0,0,.20);
-      font-size: 10px;
-      font-weight: 900;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: relative;
+      top: auto !important;
+      right: auto;
+      z-index: 1;
+      width: fit-content;
+      min-height: 0;
+      margin: 0 0 2px auto;
+      padding: 3px 8px;
+      border-radius: 8px;
+      background: #e5e5ea;
+      border: 1px solid #d1d1d6;
+      box-shadow: none;
+      font-size: 9px;
+      font-weight: 700;
+      color: #636366;
+      display: block;
       text-align: center;
       direction: rtl;
       pointer-events: none;
-      white-space: pre-line;
-      transition: top .12s linear, opacity .15s ease;
+      white-space: nowrap;
+      transition: none;
     }
+
     .products-scroll-counter-text {
       display: block;
-      width: 100%;
-      line-height: 1.35;
-      white-space: pre-line;
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0,0,0,.3);
+      width: auto;
+      line-height: 1.2;
+      white-space: nowrap;
+      color: #636366;
+      text-shadow: none;
     }
+
     .products-scroll-track, .products-scroll-progress { display: none !important; }
 
     /* زر إغلاق واضح دائماً في نافذة الطلبيات الواردة على الهاتف */
@@ -901,9 +899,6 @@
     </div>
 
     <div class="product-list" id="prod-list-container"></div>
-    <div class="products-scroll-counter" id="products-scroll-counter" aria-hidden="true">
-      <span class="products-scroll-counter-text" id="products-scroll-counter-text">1–0\nمن 0</span>
-    </div>
   </div>
 
   <div id="view-pos" style="display: none;">
@@ -1819,14 +1814,7 @@
       const top = list.scrollTop;
       const bottom = top + list.clientHeight;
 
-      // يتحرك العداد مع موضع التمرير داخل قائمة المخزن
-      const counter = document.getElementById('products-scroll-counter');
-      if (counter) {
-        const maxScroll = Math.max(1, list.scrollHeight - list.clientHeight);
-        const travel = Math.max(0, list.clientHeight - counter.offsetHeight - 16);
-        const y = 8 + (top / maxScroll) * travel;
-        counter.style.top = Math.round(y) + 'px';
-      }
+      // العداد جزء من قائمة الأدوية نفسها، لذلك يتحرك معها بشكل طبيعي أثناء التمرير.
       let first = cards.findIndex(card => (card.offsetTop + card.offsetHeight) > top + 2);
       if (first < 0) first = 0;
       let last = cards.length - 1;
@@ -2162,23 +2150,13 @@
     }
 
     function closeCameraScanner() {
-      const hide = () => {
-        const modal = document.getElementById('modal-scanner');
-        if (modal) modal.style.display = 'none';
-      };
-
+      const finish = () => hideModalById('modal-scanner');
       if (html5QrScanner) {
         html5QrScanner.stop()
-          .then(() => {
-            try { html5QrScanner.clear(); } catch (e) {}
-            hide();
-          })
-          .catch(() => {
-            try { html5QrScanner.clear(); } catch (e) {}
-            hide();
-          });
+          .then(() => { try { html5QrScanner.clear(); } catch (e) {} finish(); })
+          .catch(() => { try { html5QrScanner.clear(); } catch (e) {} finish(); });
       } else {
-        hide();
+        finish();
       }
     }
 
@@ -2640,13 +2618,18 @@
       const arCollator = new Intl.Collator('ar', { sensitivity: 'base', numeric: true });
       list.sort((a, b) => arCollator.compare(String(a.name || ''), String(b.name || '')));
 
+      const counterHtml = `
+        <div class="products-scroll-counter" id="products-scroll-counter" aria-hidden="true">
+          <span class="products-scroll-counter-text" id="products-scroll-counter-text">المواد 0–0 من 0</span>
+        </div>`;
+
       if (list.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
+        container.innerHTML = counterHtml + `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
         updateProductsScrollCounter();
         return;
       }
 
-      container.innerHTML = list.map(item => {
+      container.innerHTML = counterHtml + list.map(item => {
         const inCart = cartMap[item.id] || 0;
         const isOutOfStock = item.quantity <= 0;
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
@@ -3528,30 +3511,8 @@
     function openAddModal() { showModalById('modal-add-item'); const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
     function closeAddModal() { hideModalById('modal-add-item'); }
     function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
-    function closeCameraScanner() { hideModalById('modal-scanner'); }
-
-
-    function openEditItemModal(prodId) {
-      if (!isAdminUnlocked) return alert("هذه العملية متاحة فقط لصاحب المذخر.");
-      const item = inventory.find(i => String(i.id) === String(prodId));
-      if (!item) return alert("لم يتم العثور على المادة.");
-      document.getElementById('edit-prod-id').value = item.id;
-      document.getElementById('edit-name').value = item.name || '';
-      document.getElementById('edit-image').value = item.image || '';
-      document.getElementById('edit-company').value = item.company || '';
-      document.getElementById('edit-form').value = item.form || '';
-      document.getElementById('edit-barcode').value = item.barcode || '';
-      document.getElementById('edit-qty').value = item.quantity ?? 0;
-      document.getElementById('edit-min-qty').value = item.minQty ?? 5;
-      document.getElementById('edit-price').value = item.price ?? 0;
-      document.getElementById('edit-bonus').value = item.bonus ?? 0;
-      document.getElementById('edit-exp').value = item.expiryDate || '';
-      showModalById('modal-edit-item');
-    }
-
     function closeEditModal() {
-      const el = document.getElementById('modal-edit-item');
-      if (el) el.style.display = 'none';
+      hideModalById('modal-edit-item');
     }
 
     async function saveEditedMedicine() {
@@ -3810,8 +3771,7 @@
     }
 
     function closeDirectBarcodeModal() {
-      const el = document.getElementById('modal-direct-barcode');
-      if (el) el.style.display = 'none';
+      hideModalById('modal-direct-barcode');
       currentBarcodePrintData = null;
     }
 
@@ -3902,8 +3862,7 @@
       currentInspectingOrderIndex = null;
       const delBtn = document.getElementById('inspect-delete-btn');
       if (delBtn) delBtn.style.display = 'none';
-      const el = document.getElementById('modal-inspect-order');
-      if (el) el.style.display = 'none';
+      hideModalById('modal-inspect-order');
     }
 
     function renderInspectOrderItems() {
