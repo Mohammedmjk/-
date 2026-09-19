@@ -633,52 +633,72 @@
       overflow: hidden !important;
     }
 
-    /* شريط تمرير بسيط للأدوية: مؤشر رفيع فقط، والعدد يظهر عند الضغط عليه */
-    #view-home { position: relative !important; }
+    /* مؤشر تمرير الأدوية يكون داخل منطقة قائمة الأدوية نفسها، وليس فوق شريط البحث */
+    #products-list-shell {
+      position: relative !important;
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      width: 100%;
+    }
     #prod-list-container {
       position: relative !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
       scrollbar-width: none !important;
       -ms-overflow-style: none !important;
     }
     #prod-list-container::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
+
+    /* المسار مرتبط مباشرة بمنطقة قائمة الأدوية */
     #products-scrollbar {
       position: absolute;
-      top: 4px;
+      top: 6px;
       right: 3px;
-      bottom: 4px;
-      width: 16px;
-      z-index: 25;
+      bottom: 8px;
+      width: 15px;
+      z-index: 30;
       display: none;
       pointer-events: auto;
       touch-action: none;
       user-select: none;
+      overflow: visible;
     }
     #products-scrollbar::before {
       content: '';
       position: absolute;
       top: 0;
       bottom: 0;
-      left: 2px;
+      left: 5px;
       width: 5px;
       border-radius: 8px;
       background: rgba(60,60,67,.14);
     }
     #products-scrollbar-thumb {
       position: absolute;
-      left: 5px;
-      right: 5px;
+      left: 4px;
+      right: 4px;
       top: 0;
       min-height: 42px;
       border-radius: 8px;
-      background: rgba(0,122,255,.82);
-      box-shadow: 0 1px 4px rgba(0,122,255,.28);
+      background: rgba(0,122,255,.86);
+      box-shadow: 0 1px 5px rgba(0,122,255,.30);
       cursor: grab;
       touch-action: none;
+      overflow: visible;
     }
-    #products-scrollbar-thumb:active { cursor: grabbing; background: rgba(0,122,255,.95); }
+    #products-scrollbar-thumb:hover { background: rgba(0,122,255,.92); }
+    #products-scrollbar-thumb:active { cursor: grabbing; background: rgba(0,122,255,.98); }
+
+    /* يظهر العدد فقط أثناء الضغط/السحب، ويتحرك تلقائياً مع المؤشر */
     #products-scroll-counter-text {
-      position: fixed;
-      right: 24px;
+      position: absolute;
+      right: calc(100% + 5px);
+      top: 50%;
       min-width: 58px;
       max-width: 74px;
       padding: 5px 7px;
@@ -700,6 +720,22 @@
     #products-scroll-counter-text.show {
       opacity: 1;
       transform: translateY(-50%) scale(1);
+    }
+
+    /* لا يزيح المؤشر أسماء الأدوية؛ المساحة محجوزة داخل هامش القائمة فقط */
+    @media (max-width: 600px) {
+      #products-scrollbar {
+        right: 2px;
+        width: 14px;
+      }
+      #products-scrollbar-thumb {
+        left: 4px;
+        right: 4px;
+      }
+      #products-scroll-counter-text {
+        right: calc(100% + 5px);
+        font-size: 10px;
+      }
     }
 
     /* إغلاق نافذة فحص الطلبيات يبقى ظاهرًا على الهاتف أثناء التمرير */
@@ -867,10 +903,12 @@
       </div>
     </div>
 
-    <div class="product-list" id="prod-list-container"></div>
-    <div id="products-scrollbar" aria-hidden="true">
-      <div id="products-scrollbar-thumb" aria-label="مؤشر تمرير الأدوية">
-        <span id="products-scroll-counter-text">1–1\nمن 1</span>
+    <div id="products-list-shell">
+      <div class="product-list" id="prod-list-container"></div>
+      <div id="products-scrollbar" aria-hidden="true">
+        <div id="products-scrollbar-thumb" aria-label="مؤشر تمرير الأدوية">
+          <span id="products-scroll-counter-text">1–1\nمن 1</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1479,8 +1517,6 @@
       const range = getVisibleProductRange();
       text.textContent = `${range.start}–${range.end}\nمن ${range.total}`;
       if (show) {
-        const thumbRect = thumb.getBoundingClientRect();
-        text.style.top = (thumbRect.top + thumbRect.height / 2) + 'px';
         text.classList.add('show');
       }
     }
@@ -1546,7 +1582,8 @@
       const home = document.getElementById('view-home');
       const search = document.querySelector('#view-home .search-wrapper');
       const list = document.getElementById('prod-list-container');
-      if (!home || !search || !list) return;
+      const shell = document.getElementById('products-list-shell');
+      if (!home || !search || !list || !shell) return;
 
       home.style.display = 'flex';
       home.style.flexDirection = 'column';
@@ -1558,9 +1595,14 @@
       search.style.flex = '0 0 auto';
       search.style.zIndex = '1000';
 
-      list.style.flex = '1 1 auto';
+      shell.style.flex = '1 1 auto';
+      shell.style.minHeight = '0';
+      shell.style.overflow = 'hidden';
+      shell.style.position = 'relative';
+
+      list.style.flex = 'none';
       list.style.minHeight = '0';
-      list.style.height = 'auto';
+      list.style.height = '100%';
       list.style.maxHeight = 'none';
       list.style.overflowY = 'auto';
       list.style.overflowX = 'hidden';
