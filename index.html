@@ -165,7 +165,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.12);
       overflow: hidden;
       display: none;
-      max-height: 300px;
+      max-height: 420px;
       overflow-y: auto;
     }
     .search-suggestion-item {
@@ -1874,6 +1874,9 @@
         }
       });
 
+      // لا نضع حدًا لعدد نتائج الاقتراحات.
+      // كل مادة تطابق البحث تظهر، حتى لو كانت هناك مواد كثيرة
+      // بنفس الاسم أو بنفس الشركة. القائمة نفسها قابلة للتمرير.
       const rows = allMatches.sort((a, b) => {
         const an = normalizeSearchText(a.name);
         const bn = normalizeSearchText(b.name);
@@ -1881,7 +1884,7 @@
         const bp = bn.startsWith(q) ? 0 : 1;
         if (ap !== bp) return ap - bp;
         return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
-      }).slice(0, 12);
+      });
 
       if (!rows.length) {
         box.innerHTML = '';
