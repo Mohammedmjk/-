@@ -165,7 +165,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.12);
       overflow: hidden;
       display: none;
-      max-height: 300px;
+      max-height: 420px;
       overflow-y: auto;
     }
     .search-suggestion-item {
@@ -217,6 +217,109 @@
       cursor: pointer;
       font-size: 15px;
     }
+
+    .search-clear-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 50%;
+      background: #d1d1d6;
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1;
+      z-index: 5;
+      padding: 0;
+    }
+    .search-clear-btn.main-clear { left: 44px; right: auto; }
+    .search-clear-btn.pos-clear { left: 44px; right: auto; }
+    #search-box.search-input, #pos-search-box.search-input { padding-left: 78px; }
+    .search-clear-btn:hover { background: #8e8e93; }
+
+    /* عداد جانبي مستقل: لا يغطي اسم الدواء، ويتحرك من بداية القائمة مع التمرير */
+    #view-home { position: relative !important; }
+    #prod-list-container {
+      position: relative !important;
+      padding-right: 86px !important;
+      box-sizing: border-box !important;
+    }
+    .products-scroll-counter {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 30;
+      width: 68px;
+      min-height: 42px;
+      margin: 0;
+      padding: 6px 4px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #007aff, #5856d6);
+      border: 2px solid rgba(255,255,255,.95);
+      box-shadow: 0 3px 12px rgba(0,0,0,.20);
+      font-size: 10px;
+      font-weight: 900;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      direction: rtl;
+      pointer-events: none;
+      white-space: pre-line;
+      transition: top .12s linear, opacity .15s ease;
+    }
+    .products-scroll-counter-text {
+      display: block;
+      width: 100%;
+      line-height: 1.35;
+      white-space: pre-line;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.3);
+    }
+    .products-scroll-track, .products-scroll-progress { display: none !important; }
+
+    /* زر إغلاق واضح دائماً في نافذة الطلبيات الواردة على الهاتف */
+    #modal-inspect-order .modal-sheet { position: relative !important; }
+    #modal-inspect-order .mobile-inspect-close {
+      display: flex !important;
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 100;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      background: #ff3b30;
+      color: #fff;
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    @media (min-width: 700px) {
+      #modal-inspect-order .mobile-inspect-close { display: none !important; }
+    }
+    .prod-last-request {
+      margin-top: 4px;
+      font-size: 10px;
+      color: #8e8e93;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .prod-last-request strong { color: #636366; }
 
     .icon-action-circle {
       width: 44px;
@@ -500,6 +603,14 @@
       border: 2px solid #fff;
     }
 
+    /* النوافذ المنبثقة أعلى من محرك البحث والقوائم دائماً */
+    .modal-overlay {
+      z-index: 10000 !important;
+    }
+    .modal-overlay * {
+      z-index: auto;
+    }
+
     .modal-overlay {
       position: fixed !important;
       inset: 0 !important;
@@ -719,7 +830,8 @@
     <div class="search-wrapper">
       <div class="search-row-flex">
         <div class="search-box-rel">
-          <input type="text" id="search-box" class="search-input" autocomplete="off" placeholder="🔍 اكتب أي حرف من اسم الدواء..." oninput="handleMainSearchInput()" onfocus="renderSearchSuggestions()">
+          <input type="text" id="search-box" class="search-input" autocomplete="off" placeholder="🔍 ابحث باسم الدواء أو الشركة أو الباركود..." oninput="handleMainSearchInput()" onfocus="renderSearchSuggestions()">
+          <button type="button" id="search-clear-btn" class="search-clear-btn main-clear" onclick="clearSearchInput('search-box')" title="مسح البحث">×</button>
           <button class="camera-scan-icon-btn" onclick="openCameraScanner('search-box')" title="مسح باركود بالكاميرا">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -789,6 +901,9 @@
     </div>
 
     <div class="product-list" id="prod-list-container"></div>
+    <div class="products-scroll-counter" id="products-scroll-counter" aria-hidden="true">
+      <span class="products-scroll-counter-text" id="products-scroll-counter-text">1–0\nمن 0</span>
+    </div>
   </div>
 
   <div id="view-pos" style="display: none;">
@@ -796,7 +911,8 @@
       <div class="pos-left-pane">
         <div class="search-row-flex" style="margin-bottom: 4px;">
           <div class="search-box-rel">
-            <input type="text" id="pos-search-box" class="search-input" placeholder="🔍 ابحث باسم المادة أو امسح الباركود..." oninput="renderPosProducts()">
+            <input type="text" id="pos-search-box" class="search-input" placeholder="🔍 ابحث باسم المادة أو امسح الباركود..." oninput="handlePosSearchInput()">
+            <button type="button" id="pos-search-clear-btn" class="search-clear-btn pos-clear" onclick="clearSearchInput('pos-search-box')" title="مسح البحث">×</button>
             <button class="camera-scan-icon-btn" onclick="openCameraScanner('pos-search-box')" title="مسح باركود بالكاميرا">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -1061,6 +1177,7 @@
 
   <div id="modal-inspect-order" class="modal-overlay">
     <div class="modal-sheet">
+      <button type="button" class="mobile-inspect-close" aria-label="إغلاق نافذة الطلبية" onclick="closeInspectModal()">×</button>
       <div class="sheet-head">
         <div class="sheet-title" id="inspect-modal-title">فحص وتعديل الطلبية</div>
         <button class="btn btn-sec" onclick="closeInspectModal()">إغلاق</button>
@@ -1248,7 +1365,7 @@
       });
     }
 
-    const API_URL = "https://script.google.com/macros/s/AKfycbwgE2XZAq88ETjSM19APsdJHVPkCV9RhAyBpmhV3J3jCWGmixaARgm8wD0yn5jaaTxD/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxz7qQoyfF9_PhniIA63Gtqq4cvfgG2gdzu9TLqeLLjGhqanFKxmW3QXrCVNtuaGnMu/exec";
 
     function parseAppNumber(value) {
       if (value === null || value === undefined || value === '') return 0;
@@ -1317,6 +1434,47 @@
     const USER_PHARMACY_NAME_KEY = 'samo_user_pharmacy_name_v1';
     const USER_PHARMACY_PHONE_KEY = 'samo_user_pharmacy_phone_v1';
     const USER_DELETED_ORDERS_KEY = 'samo_deleted_my_orders_v1';
+    const PENDING_ORDER_DELETES_KEY = 'samo_pending_order_deletes_v1';
+
+    function getPendingOrderDeletes() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(PENDING_ORDER_DELETES_KEY) || '[]');
+        return new Set(Array.isArray(arr) ? arr.map(x => String(x || '').trim()).filter(Boolean) : []);
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function savePendingOrderDeletes(set) {
+      try {
+        localStorage.setItem(PENDING_ORDER_DELETES_KEY, JSON.stringify(Array.from(set || [])));
+      } catch (e) {}
+    }
+
+    function markOrderDeletePending(orderNumber) {
+      const set = getPendingOrderDeletes();
+      if (orderNumber) set.add(String(orderNumber).trim());
+      savePendingOrderDeletes(set);
+    }
+
+    function unmarkOrderDeletePending(orderNumber) {
+      const set = getPendingOrderDeletes();
+      set.delete(String(orderNumber || '').trim());
+      savePendingOrderDeletes(set);
+    }
+
+    async function syncPendingOrderDeletes() {
+      const set = getPendingOrderDeletes();
+      const numbers = Array.from(set);
+      for (const orderNumber of numbers) {
+        try {
+          await postToApi({ action: 'discard_pending_order', orderNumber });
+          unmarkOrderDeletePending(orderNumber);
+        } catch (e) {
+          // يبقى في قائمة الانتظار للمحاولة التالية.
+        }
+      }
+    }
 
     function getLocalUserId() {
       let id = localStorage.getItem(USER_ID_KEY);
@@ -1401,18 +1559,28 @@
     }
 
     function mergeOrdersPreservingLocal(remoteOrders) {
-      const remote = Array.isArray(remoteOrders) ? remoteOrders : [];
-      const remoteMap = new Map(remote.map(o => [String(o.orderNumber || '').trim(), o]));
-      const merged = [...remote];
-      (ordersList || []).forEach(localOrder => {
-        const number = String(localOrder.orderNumber || '').trim();
-        if (!number || remoteMap.has(number)) return;
-        // احتفظ بأي طلب أنشأه هذا المستخدم حتى لو تغيرت حالته محلياً إلى معتمد.
-        if (isOrderMine(localOrder) || localOrder._localPending || localOrder._remotePending) {
-          merged.push(localOrder);
+      // توحيد الطلبات حسب رقم الطلب حتى لا تظهر النسخة القديمة والجديدة معاً.
+      // إذا كانت هناك نسخة معلقة قبل الاعتماد، فهي صاحبة الأولوية على أي نسخة قديمة في Sheets.
+      const remoteMap = new Map();
+      (Array.isArray(remoteOrders) ? remoteOrders : []).forEach(o => {
+        const number = String(o && o.orderNumber || '').trim();
+        if (!number) return;
+        const existing = remoteMap.get(number);
+        if (!existing || (o._remotePending && !existing._remotePending)) {
+          remoteMap.set(number, o);
         }
       });
-      return merged.sort((a, b) => orderDateValue(b) - orderDateValue(a));
+
+      // الطلب المحلي غير المرفق بالخادم يبقى ظاهرًا حتى ينجح حفظه.
+      (ordersList || []).forEach(localOrder => {
+        const number = String(localOrder && localOrder.orderNumber || '').trim();
+        if (!number || remoteMap.has(number)) return;
+        if (localOrder._localPending || isOrderMine(localOrder)) {
+          remoteMap.set(number, localOrder);
+        }
+      });
+
+      return Array.from(remoteMap.values()).sort((a, b) => orderDateValue(b) - orderDateValue(a));
     }
 
     function applyScrollableViewsLayout() {
@@ -1503,6 +1671,10 @@
       window.addEventListener('resize', lockSearchWhileProductsScroll);
       window.addEventListener('resize', applyScrollableViewsLayout);
       initSystem();
+      updateSearchClearButton('search-box');
+      updateSearchClearButton('pos-search-box');
+      const productsList = document.getElementById('prod-list-container');
+      if (productsList) productsList.addEventListener('scroll', updateProductsScrollCounter, { passive: true });
       window.addEventListener('click', (event) => {
         document.querySelectorAll('.dropdown-box').forEach(el => el.classList.remove('show'));
         const box = document.getElementById('search-suggestions');
@@ -1584,9 +1756,131 @@
       renderPosProducts();
     }
 
+    function normalizeSearchText(value) {
+      return String(value || '')
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[\u064B-\u065F\u0670]/g, '')
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه')
+        .replace(/ؤ/g, 'و')
+        .replace(/ئ/g, 'ي')
+        .replace(/ـ/g, '')
+        .replace(/[^\p{L}\p{N}]+/gu, '')
+        .trim();
+    }
+
+    function updateSearchClearButton(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const btn = document.getElementById(inputId === 'search-box' ? 'search-clear-btn' : 'pos-search-clear-btn');
+      if (btn) btn.style.display = String(input.value || '').trim() ? 'flex' : 'none';
+    }
+
+    function clearSearchInput(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.value = '';
+      updateSearchClearButton(inputId);
+      if (inputId === 'pos-search-box') {
+        renderPosProducts();
+      } else {
+        const box = document.getElementById('search-suggestions');
+        if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+        renderProducts();
+      }
+      input.focus();
+    }
+
+    function handlePosSearchInput() {
+      updateSearchClearButton('pos-search-box');
+      renderPosProducts();
+    }
+
     function handleMainSearchInput() {
+      updateSearchClearButton('search-box');
       renderProducts();
       renderSearchSuggestions();
+    }
+
+    function updateProductsScrollCounter() {
+      const list = document.getElementById('prod-list-container');
+      const text = document.getElementById('products-scroll-counter-text');
+      if (!list || !text) return;
+
+      const cards = Array.from(list.querySelectorAll('.prod-card'));
+      const total = cards.length;
+      if (!total) {
+        text.textContent = '📦 المواد 0–0 من 0';
+        return;
+      }
+
+      const top = list.scrollTop;
+      const bottom = top + list.clientHeight;
+
+      // يتحرك العداد مع موضع التمرير داخل قائمة المخزن
+      const counter = document.getElementById('products-scroll-counter');
+      if (counter) {
+        const maxScroll = Math.max(1, list.scrollHeight - list.clientHeight);
+        const travel = Math.max(0, list.clientHeight - counter.offsetHeight - 16);
+        const y = 8 + (top / maxScroll) * travel;
+        counter.style.top = Math.round(y) + 'px';
+      }
+      let first = cards.findIndex(card => (card.offsetTop + card.offsetHeight) > top + 2);
+      if (first < 0) first = 0;
+      let last = cards.length - 1;
+      const firstAfter = cards.findIndex(card => card.offsetTop >= bottom - 2);
+      if (firstAfter >= 0) last = Math.max(first, firstAfter - 1);
+
+      const startNo = first + 1;
+      const endNo = Math.min(total, Math.max(startNo, last + 1));
+      text.textContent = `📦 المواد ${startNo}–${endNo} من ${total}`;
+
+    }
+
+    function getLastRequestedInfo(product) {
+      if (!product || !Array.isArray(ordersList)) return null;
+      const productId = String(product.id || '').trim();
+      const barcode = normalizeSearchText(product.barcode || '');
+      const name = normalizeSearchText(product.name || '');
+
+      const candidates = ordersList.filter(order => {
+        if (!order || !Array.isArray(order.items) || !order.items.length) return false;
+        if (!isAdminUnlocked && !isOrderMine(order)) return false;
+        return order.items.some(item => {
+          const iid = String(item && item.id || '').trim();
+          const ib = normalizeSearchText(item && item.barcode || '');
+          const inn = normalizeSearchText(item && item.name || '');
+          return (productId && iid && productId === iid) ||
+                 (barcode && ib && barcode === ib) ||
+                 (name && inn && name === inn);
+        });
+      }).sort((a, b) => orderDateValue(b) - orderDateValue(a));
+
+      if (!candidates.length) return null;
+      const order = candidates[0];
+      const item = (order.items || []).find(it => {
+        const iid = String(it && it.id || '').trim();
+        const ib = normalizeSearchText(it && it.barcode || '');
+        const inn = normalizeSearchText(it && it.name || '');
+        return (productId && iid && productId === iid) ||
+               (barcode && ib && barcode === ib) ||
+               (name && inn && name === inn);
+      });
+      if (!item) return null;
+
+      let dateText = '';
+      if (order.createdAt) {
+        const d = new Date(order.createdAt);
+        if (!Number.isNaN(d.getTime())) dateText = d.toLocaleDateString('ar-IQ');
+      }
+      if (!dateText) dateText = String(order.date || '').trim();
+      return {
+        quantity: Math.floor(Number(item.quantity) || 0),
+        date: dateText || '—',
+        orderNumber: String(order.orderNumber || '').trim()
+      };
     }
 
     function renderSearchSuggestions() {
@@ -1594,26 +1888,43 @@
       const input = document.getElementById('search-box');
       if (!box || !input) return;
 
-      const q = String(input.value || '').trim().toLowerCase();
+      const rawQ = String(input.value || '').trim();
+      const q = normalizeSearchText(rawQ);
       if (!q) {
         box.innerHTML = '';
         box.style.display = 'none';
         return;
       }
 
-      const rows = (inventory || []).filter(p => {
-        const name = String(p.name || '').toLowerCase();
-        const barcode = String(p.barcode || '').toLowerCase();
-        const company = String(p.company || '').toLowerCase();
+      const allMatches = (inventory || []).filter(p => {
+        const name = normalizeSearchText(p.name);
+        const barcode = normalizeSearchText(p.barcode);
+        const company = normalizeSearchText(p.company);
         return name.includes(q) || barcode.includes(q) || company.includes(q);
-      }).sort((a, b) => {
-        const an = String(a.name || '').toLowerCase();
-        const bn = String(b.name || '').toLowerCase();
+      });
+
+      const companyMatches = [];
+      const companySeen = new Set();
+      allMatches.forEach(p => {
+        const companyText = String(p.company || '').trim();
+        const companyKey = normalizeSearchText(companyText);
+        if (companyText && companyKey && companyKey.includes(q) && !companySeen.has(companyKey)) {
+          companySeen.add(companyKey);
+          companyMatches.push({ name: companyText, count: allMatches.filter(x => normalizeSearchText(x.company) === companyKey).length });
+        }
+      });
+
+      // لا نضع حدًا لعدد نتائج الاقتراحات.
+      // كل مادة تطابق البحث تظهر، حتى لو كانت هناك مواد كثيرة
+      // بنفس الاسم أو بنفس الشركة. القائمة نفسها قابلة للتمرير.
+      const rows = allMatches.sort((a, b) => {
+        const an = normalizeSearchText(a.name);
+        const bn = normalizeSearchText(b.name);
         const ap = an.startsWith(q) ? 0 : 1;
         const bp = bn.startsWith(q) ? 0 : 1;
         if (ap !== bp) return ap - bp;
-        return an.localeCompare(bn, 'ar');
-      }).slice(0, 12);
+        return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
+      });
 
       if (!rows.length) {
         box.innerHTML = '';
@@ -1621,7 +1932,14 @@
         return;
       }
 
-      box.innerHTML = rows.map(p => `
+      const companyHeader = companyMatches.length ? companyMatches.map(c => `
+        <div class="search-suggestion-item" style="cursor:default;background:#f7f7fb;">
+          <div class="search-suggestion-main">🏢 ${escapeHtml(c.name)}</div>
+          <div class="search-suggestion-sub">كل مواد هذه الشركة ستظهر في القائمة: ${c.count.toLocaleString()} مادة</div>
+        </div>
+      `).join('') : '';
+
+      box.innerHTML = companyHeader + rows.map(p => `
         <button type="button" class="search-suggestion-item" onclick="selectSearchSuggestion('${escapeHtml(String(p.id))}')">
           <div class="search-suggestion-main">${escapeHtml(p.name)}</div>
           <div class="search-suggestion-sub">${escapeHtml(p.company || '')}${p.barcode ? ' | ' + escapeHtml(p.barcode) : ''}</div>
@@ -1635,6 +1953,7 @@
       const input = document.getElementById('search-box');
       if (!p || !input) return;
       input.value = p.name || '';
+      updateSearchClearButton('search-box');
       const box = document.getElementById('search-suggestions');
       if (box) { box.innerHTML = ''; box.style.display = 'none'; }
       renderProducts();
@@ -1681,6 +2000,7 @@
 
       if (inputElem) {
         inputElem.value = value;
+        updateSearchClearButton(targetSearchInputId);
         if (targetSearchInputId === 'pos-search-box') {
           renderPosProducts();
         } else {
@@ -1960,6 +2280,7 @@
           const input = document.getElementById('search-box');
           if (input) {
             input.value = searchValue;
+            updateSearchClearButton('search-box');
             renderProducts();
             const exact = (inventory || []).some(p =>
               (barcode && String(p.barcode || '').trim() === barcode) ||
@@ -2101,6 +2422,7 @@
       }
 
       window.addEventListener('online', () => { triggerSync(); });
+      syncPendingOrderDeletes().catch(() => {});
       loadRemoteData();
     }
 
@@ -2152,6 +2474,7 @@
     async function triggerSync() {
       const lbl = document.getElementById('conn-lbl');
       if (lbl) lbl.innerText = "جاري مزامنة السحابة...";
+      await syncPendingOrderDeletes();
       await loadRemoteData();
       alert("تمت المزامنة بنجاح!");
     }
@@ -2198,8 +2521,11 @@
             localStorage.setItem('samo_staff_names_list', JSON.stringify(staffNamesList));
             populateStaffDropdown();
           }
-          const remoteOrders = Array.isArray(data.orders) ? data.orders.slice() : [];
-          const remotePendingOrders = Array.isArray(data.pendingOrders) ? data.pendingOrders.map(o => ({ ...o, _remotePending: true })) : [];
+          const pendingDeletes = getPendingOrderDeletes();
+          const remoteOrders = (Array.isArray(data.orders) ? data.orders.slice() : [])
+            .filter(o => !pendingDeletes.has(String(o && o.orderNumber || '').trim()));
+          const remotePendingOrders = (Array.isArray(data.pendingOrders) ? data.pendingOrders.map(o => ({ ...o, _remotePending: true })) : [])
+            .filter(o => !pendingDeletes.has(String(o && o.orderNumber || '').trim()));
           ordersList = mergeOrdersPreservingLocal(remoteOrders.concat(remotePendingOrders));
           saveOrdersLocal();
         }
@@ -2291,13 +2617,19 @@
       cleanCartState();
       const container = document.getElementById('prod-list-container');
       if (!container) return;
-      const q = document.getElementById('search-box').value.trim().toLowerCase();
+      const rawQ = document.getElementById('search-box').value.trim();
+      const q = normalizeSearchText(rawQ);
       const companyFilter = document.getElementById('filter-company').value;
       const expiryFilter = document.getElementById('filter-expiry').value;
       const stockFilter = document.getElementById('filter-stock').value;
       const formFilter = document.getElementById('filter-form').value;
       let list = [...inventory];
-      if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.barcode && i.barcode.includes(q)) || (i.company && i.company.toLowerCase().includes(q)));
+      if (q) list = list.filter(i => {
+        const name = normalizeSearchText(i.name);
+        const barcode = normalizeSearchText(i.barcode);
+        const company = normalizeSearchText(i.company);
+        return name.includes(q) || barcode.includes(q) || company.includes(q);
+      });
       if (hideOutStock) list = list.filter(i => i.quantity > 0);
       if (companyFilter) list = list.filter(i => (i.company || '').trim().toLowerCase() === companyFilter.trim().toLowerCase());
       if (formFilter) list = list.filter(i => smartDetectForm(i.name, i.form) === formFilter);
@@ -2310,6 +2642,7 @@
 
       if (list.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--ios-sub);">لا توجد مواد مطابقة</div>`;
+        updateProductsScrollCounter();
         return;
       }
 
@@ -2317,6 +2650,7 @@
         const inCart = cartMap[item.id] || 0;
         const isOutOfStock = item.quantity <= 0;
         const netPrice = item.bonus > 0 ? Math.round(item.price * (1 - (item.bonus / 100))) : item.price;
+        const lastRequest = getLastRequestedInfo(item);
         let cartActionHtml = isOutOfStock ? `<span class="badge badge-out">نافد من المخزن</span>` :
           (inCart === 0 ? `<button class="btn-add-cart-wide" onclick="modifyCartQty('${item.id}', 1)">+ إضافة للسلة</button>` :
           `<div class="counter-control-wide"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', -1)">-</button><input type="number" min="1" max="${item.quantity}" value="${inCart}" class="counter-val-wide" style="width:58px;text-align:center;border:0;background:transparent;font-weight:800;font-size:16px;outline:none;" onchange="setCartQty('${item.id}', this.value)" onkeydown="if(event.key==='Enter'){setCartQty('${item.id}', this.value);this.blur();}"><button class="counter-btn-wide" onclick="modifyCartQty('${item.id}', 1)">+</button></div>`);
@@ -2339,6 +2673,7 @@
             <div class="prod-top"><div class="prod-info-col"><div class="prod-name">${item.name}</div>
             <div style="font-size:11px;color:${checkExpiryStatus(item.expiryDate)==='expired'?'#e11d48':checkExpiryStatus(item.expiryDate)==='near'?'#d97706':'var(--ios-sub)'};font-weight:800;margin-top:-2px;">📅 الصلاحية: ${escapeHtml(formatExpiryForDisplay(item.expiryDate) || item.expiryDate || "غير محدد")} ${checkExpiryStatus(item.expiryDate)==='expired'?'⚠️ منتهي':checkExpiryStatus(item.expiryDate)==='near'?'⏳ قريب':checkExpiryStatus(item.expiryDate)==='valid'?'✓ صالح':''}</div>
             ${isAdminUnlocked && item.createdAt ? `<div style="font-size:10px;color:var(--ios-sub);font-weight:700;">🕒 تاريخ الإضافة: ${escapeHtml(formatCreatedAt(item.createdAt))}</div>` : ''}
+            ${lastRequest ? `<div class="prod-last-request">🛒 آخر طلب: <strong>${lastRequest.quantity.toLocaleString()}</strong> &nbsp;•&nbsp; 📅 ${escapeHtml(lastRequest.date)}</div>` : ''}
             <div class="prod-sub-info"><span class="badge badge-form">${smartDetectForm(item.name, item.form)}</span> ${item.company ? `<span class="badge" style="background:#f1f5f9; color:#475569;">🏢 ${item.company}</span>` : ''}</div></div></div>
             <div class="prod-cart-action-area">${cartActionHtml}</div>
             <div class="prod-bottom"><span class="prod-price">${netPrice.toLocaleString()} د.ع</span><span class="prod-stock-lbl">المتوفر: ${item.quantity}</span></div>
@@ -2347,6 +2682,7 @@
         `;
       }).join('');
       updateBadgeDot();
+      updateProductsScrollCounter();
     }
 
     function renderPosProducts() {
@@ -2815,18 +3151,24 @@
       if (!orderNumber) return alert('رقم الطلب غير موجود.');
       if (!confirm(`هل أنت متأكد من حذف الطلبية ${orderNumber} نهائياً؟\n\nلن يتم خصم أو إعادة أي كمية من المخزون.`)) return;
 
-      try {
-        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
-        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
-        saveOrdersLocal();
-        closeInspectModal();
-        renderIncomingOrders();
-        renderOrders();
-        await loadRemoteData();
-        alert('تم حذف الطلبية نهائياً قبل الاعتماد.');
-      } catch (e) {
-        alert('لم يتم حذف الطلبية. لم أغيّر السجل المحلي.\n\nالسبب: ' + (e && e.message ? e.message : e));
-      }
+      // حذف فوري من الشاشة، ثم ترحيل الحذف إلى الخادم في الخلفية.
+      markOrderDeletePending(orderNumber);
+      ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+      saveOrdersLocal();
+      closeInspectModal();
+      renderIncomingOrders();
+      renderOrders();
+
+      // الطلب قيد المراجعة لم يُحفظ في Sheets أصلاً؛ نحذفه من التخزين المعلق فقط.
+      // لا نرسل أي عملية حذف إلى orders ولا إلى order detalis.
+      postToApi({ action: 'discard_pending_order', orderNumber })
+        .then(() => {
+          unmarkOrderDeletePending(orderNumber);
+          loadRemoteData().catch(() => {});
+        })
+        .catch(() => {});
+
+      alert('تم حذف الطلبية من القائمة فوراً، ويجري تثبيت الحذف نهائياً.');
     }
 
     async function approveIncomingOrder(idx) {
@@ -2939,17 +3281,23 @@
         return;
       }
 
-      try {
-        await postToApi({ action: 'delete_order', orderNumber: orderNumber });
-        markMyOrderDeleted(orderNumber);
-        ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
-        saveOrdersLocal();
-        renderMyOrders();
-        renderIncomingOrders();
-        alert('تم حذف الطلبية قبل اعتمادها.');
-      } catch (e) {
-        alert('تعذر حذف الطلبية قيد المراجعة.\n\nالسبب: ' + (e.message || e));
-      }
+      // حذف فوري من «طلباتي» ومن «الطلبيات الواردة»، مع إبقاء الحذف بالخادم في طابور حتى ينجح.
+      markMyOrderDeleted(orderNumber);
+      markOrderDeletePending(orderNumber);
+      ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
+      saveOrdersLocal();
+      renderMyOrders();
+      renderIncomingOrders();
+      closeInspectModal();
+
+      postToApi({ action: 'discard_pending_order', orderNumber })
+        .then(() => {
+          unmarkOrderDeletePending(orderNumber);
+          loadRemoteData().catch(() => {});
+        })
+        .catch(() => {});
+
+      alert('تم حذف الطلبية قبل الاعتماد فوراً، ويجري تثبيت الحذف نهائياً.');
     }
 
     function renderOrders() {
@@ -3172,7 +3520,7 @@
       if (t === 'reports' && isAdminUnlocked) updateReportsView();
       if (t === 'staff' && isAdminUnlocked) renderStaffManagementView();
       if (t === 'pos' && isAdminUnlocked) renderPosProducts();
-      if (t === 'home') requestAnimationFrame(lockSearchWhileProductsScroll);
+      if (t === 'home') requestAnimationFrame(() => { lockSearchWhileProductsScroll(); updateProductsScrollCounter(); });
       if (t === 'log') { renderOrders(); }
       requestAnimationFrame(applyScrollableViewsLayout);
     }
