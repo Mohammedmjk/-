@@ -1411,11 +1411,11 @@
       const text = await response.text();
       let result = {};
       try { result = JSON.parse(text); } catch (e) {}
-      if (!response.ok || result.status === 'error') {
+      if (!response.ok || result.status === 'error' || result.success === false) {
         if (response.status === 404) {
           throw new Error('رابط Google Apps Script غير صحيح أو الإصدار المنشور غير موجود (404).');
         }
-        throw new Error(result.message || ('HTTP ' + response.status));
+        throw new Error(result.message || result.error || ('HTTP ' + response.status));
       }
       return result;
     }
@@ -1581,9 +1581,16 @@
       });
 
       // الطلب المحلي غير المرفق بالخادم يبقى ظاهرًا حتى ينجح حفظه.
+      const deletedByUser = getDeletedMyOrderSet();
+
       (ordersList || []).forEach(localOrder => {
         const number = String(localOrder && localOrder.orderNumber || '').trim();
         if (!number || remoteMap.has(number)) return;
+
+        // إذا حذف الموظف الطلب، لا نعيد إحياء النسخة المحلية
+        // عند المزامنة حتى لو كانت ما زالت محفوظة في localStorage.
+        if (deletedByUser.has(number)) return;
+
         if (localOrder._localPending || isOrderMine(localOrder)) {
           remoteMap.set(number, localOrder);
         }
@@ -3123,6 +3130,7 @@
     async function resendPendingOrder(idx){
       const order=ordersList[idx];
       if(!order || !isReviewStatus(order) || !isOrderMine(order)) return;
+      if (getDeletedMyOrderSet().has(String(order.orderNumber || '').trim())) return;
       if (getPendingOrderDeletes().has(String(order.orderNumber || '').trim())) return;
       try{
         const result=await postToApi({action:'new_order',order:order});
@@ -3638,20 +3646,30 @@
       if (!item) return;
       if (!confirm(`هل أنت متأكد من حذف المادة (${item.name})؟`)) return;
 
-      inventory = inventory.filter(i => String(i.id) !== String(prodId));
-      localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
-      populateCompanyDropdown();
-      populateReportCompanyDropdown();
-      renderAlerts();
-      renderProducts();
-      renderPosProducts();
-
+      // لا نحذف محلياً قبل تأكيد الحذف من Google Sheets.
       try {
-        await postToApi({ action: 'delete_product', productId: item.id, barcode: item.barcode, name: item.name });
+        const result = await postToApi({
+          action: 'delete_product',
+          productId: item.id,
+          barcode: item.barcode,
+          name: item.name
+        });
+
+        inventory = inventory.filter(i => String(i.id) !== String(prodId));
+        localStorage.setItem('samo_inventory_v39', JSON.stringify(inventory));
+
+        populateCompanyDropdown();
+        populateReportCompanyDropdown();
+        renderAlerts();
+        renderProducts();
+        renderPosProducts();
+
         await loadRemoteData();
-        alert("تم حذف المادة بنجاح.");
+        alert(result && result.alreadyDeleted
+          ? "المادة غير موجودة في الشيت أصلاً، وتمت مزامنة الحذف."
+          : "تم حذف المادة بنجاح من الشيت والجهاز.");
       } catch (e) {
-        alert("تم حذف المادة محلياً، لكن تعذر ترحيل الحذف إلى الشيت.");
+        alert("تعذر حذف المادة من الشيت، لذلك لم يتم حذفها محلياً.\n\nالسبب: " + (e && e.message ? e.message : e));
       }
     }
 
