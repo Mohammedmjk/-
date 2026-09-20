@@ -1387,6 +1387,14 @@
     async function postToApi(payload) {
       const controller = new AbortController();
       const action = payload && payload.action ? String(payload.action) : '';
+      const bodyPayload = Object.assign({}, payload || {});
+      const ownerActions = new Set(['approve_order','add_product','update_product','edit_product','delete_product','add_staff','delete_staff','return_order_item']);
+      if (ownerActions.has(action)) {
+        bodyPayload.adminToken = adminToken || '';
+      }
+      if (action === 'discard_pending_order' || action === 'delete_order') {
+        bodyPayload.userId = bodyPayload.userId || getLocalUserId();
+      }
       const timeoutMs = action === 'gemini_analyze_medicine_image' ? 45000 : (action === 'new_order' ? 60000 : 45000);
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       let response;
@@ -1394,7 +1402,7 @@
         response = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(bodyPayload),
           signal: controller.signal
         });
       } catch (e) {
@@ -1412,6 +1420,14 @@
       let result = {};
       try { result = JSON.parse(text); } catch (e) {}
       if (!response.ok || result.status === 'error' || result.success === false) {
+        const authError = String(result.message || result.error || '');
+        if (/صلاحية صاحب المذخر|سجّل دخول صاحب المذخر|الرمز السري غير صحيح/.test(authError)) {
+          adminToken = '';
+          isAdminUnlocked = false;
+          localStorage.removeItem(ADMIN_TOKEN_KEY);
+          localStorage.removeItem('samo_admin_logged');
+          if (typeof lockAdminUI === 'function') lockAdminUI();
+        }
         if (response.status === 404) {
           throw new Error('رابط Google Apps Script غير صحيح أو الإصدار المنشور غير موجود (404).');
         }
@@ -1432,7 +1448,8 @@
     let posHideOutStock = false;
     let targetSearchInputId = 'search-box';
     
-    let isAdminUnlocked = localStorage.getItem('samo_admin_logged') === 'true';
+    let adminToken = localStorage.getItem(ADMIN_TOKEN_KEY) || '';
+    let isAdminUnlocked = !!adminToken;
     let html5QrScanner = null;
     let currentInspectingOrderIndex = null;
     let activeStaffName = localStorage.getItem('samo_active_staff') || '';
@@ -1444,6 +1461,7 @@
     const USER_PHARMACY_PHONE_KEY = 'samo_user_pharmacy_phone_v1';
     const USER_DELETED_ORDERS_KEY = 'samo_deleted_my_orders_v1';
     const PENDING_ORDER_DELETES_KEY = 'samo_pending_order_deletes_v1';
+    const ADMIN_TOKEN_KEY = 'samo_admin_token_v2';
 
     function getPendingOrderDeletes() {
       try {
@@ -3459,18 +3477,31 @@
       const w=window.open('','_blank'); if(!w)return alert('يرجى السماح بنافذة التقرير.'); w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تقرير ${escapeHtml(d.name)}</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ccc;padding:5px;text-align:center}.summary{display:flex;gap:10px;margin:10px 0}.box{border:1px solid #ddd;padding:8px;border-radius:6px}</style></head><body><h2>تقرير الموظف: ${escapeHtml(d.name)}</h2><div>الفترة: ${d.from||'كل الفترة'} إلى ${d.to||'كل الفترة'}</div><div class="summary"><div class="box">جهز ${d.prepared.length} قائمة</div><div class="box">سلم ${d.delivered.length} قائمة</div><div class="box">الأيتمات ${totalItems}</div><div class="box">المبلغ ${totalAmount.toLocaleString()} د.ع</div></div><table><tr><th>الصيدلية</th><th>الطلب</th><th>المادة</th><th>الكمية</th><th>سعر الوحدة</th><th>المبلغ</th><th>التاريخ</th></tr>${rows}</table><script>window.onload=()=>{window.print();}<\/script></body></html>`);w.document.close();
     }
 
-    function triggerAdmin() {
-      if (isAdminUnlocked) {
+    async function triggerAdmin() {
+      if (isAdminUnlocked && adminToken) {
+        adminToken = '';
         isAdminUnlocked = false;
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
         localStorage.removeItem('samo_admin_logged');
         lockAdminUI();
-      } else {
-        const p = prompt("الرمز السري لصاحب المذخر:");
-        if (p === "admin2026") {
-          isAdminUnlocked = true;
-          localStorage.setItem('samo_admin_logged', 'true');
-          unlockAdminUI();
-        } else if (p !== null) alert("الرمز غير صحيح!");
+        return;
+      }
+      const p = prompt("الرمز السري لصاحب المذخر:");
+      if (p === null) return;
+      try {
+        const result = await postToApi({action:'admin_login', password:p});
+        if (!result || !result.token) throw new Error('لم يستلم الجهاز جلسة مدير صالحة.');
+        adminToken = String(result.token);
+        isAdminUnlocked = true;
+        localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+        localStorage.setItem('samo_admin_logged', 'true');
+        unlockAdminUI();
+      } catch (e) {
+        adminToken = '';
+        isAdminUnlocked = false;
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        localStorage.removeItem('samo_admin_logged');
+        alert((e && e.message) ? e.message : 'تعذر تسجيل دخول صاحب المذخر.');
       }
     }
 
@@ -3504,34 +3535,6 @@
       document.getElementById('admin-add-staff-btn').style.display = "none";
       document.getElementById('tab-btn-reports').style.display = "none";
       setMainTab('home');
-    }
-
-    function parseExpiryDate(value){
-      if (value === null || value === undefined || value === '') return null;
-      if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value)) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-      const v=String(value).trim();
-      if(!v) return null;
-      let m=v.match(/^(\d{4})[\/-](\d{1,2})(?:[\/-](\d{1,2}))?/);
-      if(m) return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]||1));
-      const parsed=new Date(v);
-      if(!isNaN(parsed)) return new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate());
-      return null;
-    }
-
-    function formatExpiryForDisplay(value){
-      const d=parseExpiryDate(value);
-      if(!d)return '';
-      return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+(String(value||'').match(/[\/-](\d{1,2})[\/-](\d{1,2})/) ? '/'+String(d.getDate()).padStart(2,'0') : '');
-    }
-
-    function isNearExpiry(value){
-      const d=parseExpiryDate(value);
-      if(!d)return false;
-      const now=new Date();
-      const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-      if(d < today)return false;
-      const sixMonths=new Date(today.getFullYear(),today.getMonth()+6,today.getDate());
-      return d <= sixMonths;
     }
 
     function updateReportsView() {
@@ -3595,7 +3598,6 @@
 
     function openAddModal() { showModalById('modal-add-item'); const info = document.getElementById('ai-medicine-extra-info'); if (info) { info.style.display = 'none'; info.innerHTML = ''; } }
     function closeAddModal() { hideModalById('modal-add-item'); }
-    function toggleDropdown(id, e) { e.stopPropagation(); document.getElementById(id).classList.toggle('show'); }
     function closeEditModal() {
       hideModalById('modal-edit-item');
     }
@@ -4091,7 +4093,8 @@
       if (!Number.isFinite(qty) || qty < 1 || qty > Number(item.quantity || 0)) return alert("كمية الإرجاع غير صحيحة.");
       if (!confirm(`إرجاع ${qty} من مادة ${item.name} إلى المخزن؟`)) return;
       try {
-        await postToApi({ action: 'return_order_item', orderNumber: order.orderNumber, item: { name: item.name, barcode: item.barcode || '', quantity: qty } });
+        const returnId = 'RET-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,8).toUpperCase();
+        await postToApi({ action: 'return_order_item', returnId: returnId, userId: getLocalUserId(), orderNumber: order.orderNumber, item: { name: item.name, barcode: item.barcode || '', quantity: qty } });
         item.quantity = Math.max(0, Number(item.quantity || 0) - qty);
         // لا نحذف المادة من القائمة المسلمة؛ تبقى ظاهرة بكمية 0 بعد الإرجاع الكامل.
         recalcInspectOrder();
