@@ -1477,8 +1477,8 @@
       const numbers = Array.from(set);
       for (const orderNumber of numbers) {
         try {
-          await postToApi({ action: 'discard_pending_order', orderNumber });
-          unmarkOrderDeletePending(orderNumber);
+          const result = await postToApi({ action: 'discard_pending_order', orderNumber });
+          if (result && result.success) unmarkOrderDeletePending(orderNumber);
         } catch (e) {
           // يبقى في قائمة الانتظار للمحاولة التالية.
         }
@@ -3063,6 +3063,21 @@
       try {
         let result = await postToApi({action:'new_order',order:order,forceDuplicate:forceDuplicate});
 
+        // إذا ضغط المستخدم حذف الطلب أثناء انتظار الإرسال، فالأولوية للحذف.
+        // نثبت الإلغاء على الخادم مرة أخرى ولا نسمح لرد new_order بإحياء الطلب.
+        if (getPendingOrderDeletes().has(String(order.orderNumber || '').trim())) {
+          try {
+            const cancelResult = await postToApi({action:'discard_pending_order',orderNumber:order.orderNumber});
+            if (cancelResult && cancelResult.success) unmarkOrderDeletePending(order.orderNumber);
+          } catch (cancelErr) {
+            // يبقى رقم الطلب في قائمة الحذف ليعاد إرساله في المزامنة القادمة.
+          }
+          ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== String(order.orderNumber || '').trim());
+          saveOrdersLocal();
+          await loadRemoteData().catch(() => {});
+          return;
+        }
+
         // إذا كان هناك طلب مطابق موجود على الخادم ولم نطلب التجاوز، نعرض تحذيراً ثانياً.
         if (result && result.duplicateWarning && !forceDuplicate) {
           const proceed = confirm(
@@ -3084,6 +3099,17 @@
         await loadRemoteData();
         alert(result && result.duplicateAlreadyExists ? 'الطلب موجود مسبقاً ولم تتم إضافة نسخة مكررة.' : 'تم إرسال الطلب وبقي في سجل الطلبات بانتظار اعتماد صاحب المذخر.');
       } catch(e) {
+        // إذا كان المستخدم قد حذف الطلب أثناء الإرسال، لا نحوله إلى طلب معلق مرة أخرى.
+        if (getPendingOrderDeletes().has(String(order.orderNumber || '').trim())) {
+          try {
+            const cancelResult = await postToApi({action:'discard_pending_order',orderNumber:order.orderNumber});
+            if (cancelResult && cancelResult.success) unmarkOrderDeletePending(order.orderNumber);
+          } catch (cancelErr) {}
+          ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== String(order.orderNumber || '').trim());
+          saveOrdersLocal();
+          return;
+        }
+
         const localOrder=ordersList.find(x=>String(x.orderNumber)===String(order.orderNumber));
         if(localOrder) localOrder._localPending=true;
         saveOrdersLocal();
@@ -3097,6 +3123,7 @@
     async function resendPendingOrder(idx){
       const order=ordersList[idx];
       if(!order || !isReviewStatus(order) || !isOrderMine(order)) return;
+      if (getPendingOrderDeletes().has(String(order.orderNumber || '').trim())) return;
       try{
         const result=await postToApi({action:'new_order',order:order});
         delete order._localPending; order._remotePending=true;
@@ -3157,12 +3184,15 @@
 
       // الطلب قيد المراجعة لم يُحفظ في Sheets أصلاً؛ نحذفه من التخزين المعلق فقط.
       // لا نرسل أي عملية حذف إلى orders ولا إلى order detalis.
-      postToApi({ action: 'discard_pending_order', orderNumber })
-        .then(() => {
+      try {
+        const result = await postToApi({ action: 'discard_pending_order', orderNumber });
+        if (result && result.success) {
           unmarkOrderDeletePending(orderNumber);
-          loadRemoteData().catch(() => {});
-        })
-        .catch(() => {});
+          await loadRemoteData().catch(() => {});
+        }
+      } catch (e) {
+        // يبقى الطلب في قائمة الحذف المحلية ليتم حذفه تلقائياً عند المزامنة القادمة.
+      }
 
       alert('تم حذف الطلبية من القائمة فوراً، ويجري تثبيت الحذف نهائياً.');
     }
@@ -3286,12 +3316,15 @@
       renderIncomingOrders();
       closeInspectModal();
 
-      postToApi({ action: 'discard_pending_order', orderNumber })
-        .then(() => {
+      try {
+        const result = await postToApi({ action: 'discard_pending_order', orderNumber });
+        if (result && result.success) {
           unmarkOrderDeletePending(orderNumber);
-          loadRemoteData().catch(() => {});
-        })
-        .catch(() => {});
+          await loadRemoteData().catch(() => {});
+        }
+      } catch (e) {
+        // يبقى الطلب في قائمة الحذف المحلية ليتم حذفه تلقائياً عند المزامنة القادمة.
+      }
 
       alert('تم حذف الطلبية قبل الاعتماد فوراً، ويجري تثبيت الحذف نهائياً.');
     }
