@@ -1402,7 +1402,7 @@
           if (action === 'gemini_analyze_medicine_image') {
             throw new Error('انتهت مهلة تحليل الصورة. جرّب صورة أصغر أو أوضح ثم أعد المحاولة.');
           }
-          throw new Error('انتهت مهلة الاتصال بالخادم. لم يتم تأكيد حفظ العملية. أعد المحاولة.');
+          throw new Error('انتهت مهلة الاتصال بالخادم. لم نتمكن من معرفة هل تم الحفظ أم لا. لا تضغط إرسال مرة أخرى؛ افحص طلباتك أو نفّذ المزامنة أولاً.');
         }
         throw new Error('تعذر الاتصال بـ Google Apps Script: ' + (e && e.message ? e.message : e));
       } finally {
@@ -2547,7 +2547,7 @@
     function showPendingSyncInfo() {
       const names = (inventory || []).filter(p => p && p._syncPending).map(p => p.name).filter(Boolean);
       if (!names.length) return alert('لا توجد مواد معلقة حالياً.');
-      alert('المواد التي لم يتأكد ترحيلها إلى الشيت:\n\n• ' + names.join('\n• ') + '\n\nلا تضفها مرة ثانية قبل التحقق من ورقة Products حتى لا تتكرر.');
+      alert('المواد التي لم يتأكد حفظها في الشيت:\n\n• ' + names.join('\n• ') + '\n\nلا تضفها مرة ثانية قبل التحقق من ورقة Products حتى لا تتكرر.');
     }
 
     function renderAlerts() {
@@ -2811,8 +2811,18 @@
 
       try {
         const result = await postToApi({ action: 'new_order', order: targetOrder });
+        const wasDeleted = getDeletedMyOrderSet().has(String(targetOrder.orderNumber || '').trim()) || getPendingOrderDeletes().has(String(targetOrder.orderNumber || '').trim());
         const localOrder = ordersList.find(x => String(x.orderNumber) === String(targetOrder.orderNumber));
-        if (localOrder) delete localOrder._localPending;
+        if (wasDeleted) {
+          // إذا حُذف الطلب أثناء الإرسال، لا نعيده إلى قائمة الطلبات.
+          markOrderDeletePending(targetOrder.orderNumber);
+          if (localOrder) ordersList = ordersList.filter(x => String(x.orderNumber) !== String(targetOrder.orderNumber));
+          saveOrdersLocal();
+          try { await postToApi({ action:'discard_pending_order', orderNumber:targetOrder.orderNumber }); unmarkOrderDeletePending(targetOrder.orderNumber); } catch(e) {}
+          await loadRemoteData().catch(() => {});
+          return;
+        }
+        if (localOrder) { delete localOrder._localPending; localOrder._remotePending = true; }
         saveOrdersLocal();
         posCartMap = {};
         document.getElementById('pos-ph-name').value = '';
@@ -2820,10 +2830,10 @@
         renderPosProducts();
         renderProducts();
         await loadRemoteData();
-        alert(result && result.duplicateAlreadyExists ? 'تم العثور على الطلب نفسه في الشيت مسبقاً، ولم تتم إضافة نسخة مكررة.' : 'تم إرسال الطلب بنجاح، وهو بانتظار اعتماد صاحب المذخر.');
+        alert(result && result.duplicateAlreadyExists ? 'تم العثور على الطلب نفسه في الشيت مسبقاً، ولم تتم إضافة نسخة مكررة.' : 'تم حفظ الطلب على الخادم، وهو بانتظار اعتماد صاحب المذخر.');
         setMainTab('log');
       } catch(e) {
-        alert('تعذر تأكيد إرسال الطلب إلى الشيت. بقيت السلة والطلب محفوظين لإعادة المحاولة.\n\nالسبب: ' + (e && e.message ? e.message : e));
+        alert('تعذر تأكيد حفظ الطلب على الخادم. بقيت السلة والطلب محفوظين لإعادة المحاولة.\n\nالسبب: ' + (e && e.message ? e.message : e));
       }
     }
 
@@ -3155,7 +3165,7 @@
     function renderIncomingOrders() {
       const container = document.getElementById('incoming-orders-container');
       if (!container) return;
-      const incoming = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => isReviewStatus(x.o)).sort((a,b) => orderDateValue(b.o) - orderDateValue(a.o));
+      const incoming = (ordersList || []).map((o,idx)=>({o,idx})).filter(x => isReviewStatus(x.o) && !x.o._localPending).sort((a,b) => orderDateValue(b.o) - orderDateValue(a.o));
       const badge = document.getElementById('incoming-count-badge');
       if (badge) { badge.innerText = incoming.length; badge.style.display = incoming.length ? 'inline-block' : 'none'; }
       if (!incoming.length) {
@@ -3184,6 +3194,7 @@
 
       // حذف فوري من الشاشة، ثم ترحيل الحذف إلى الخادم في الخلفية.
       markOrderDeletePending(orderNumber);
+      markMyOrderDeleted(orderNumber);
       ordersList = ordersList.filter(x => String(x && x.orderNumber || '').trim() !== orderNumber);
       saveOrdersLocal();
       closeInspectModal();
@@ -3347,7 +3358,7 @@
         const sub = document.getElementById('log-view-subtitle');
         if (title) title.innerText = 'طلباتي';
         if (viewTitle) viewTitle.innerText = 'طلباتي';
-        if (sub) sub.innerText = 'الطلبات التي أرسلتها محفوظة هنا، ويمكن تعديلها قبل الاعتماد. لا تُحفظ في Google Sheets إلا بعد الاعتماد.';
+        if (sub) sub.innerText = 'الطلبات التي أرسلتها محفوظة هنا، ويمكن تعديلها قبل الاعتماد. لا تدخل سجل orders في Google Sheets إلا بعد الاعتماد؛ وتبقى قيد المراجعة على الخادم.';
         renderMyOrders();
         return;
       }
@@ -4053,16 +4064,20 @@
       if (!['معتمد','معتمد للتجهيز','approved'].includes(st)) return alert("زر التسليم يظهر للقوائم المعتمدة فقط.");
       if (!activeStaffName) return alert("يرجى اختيار اسم الموظف الذي قام بالتسليم أولاً.");
       if (!confirm(`تأكيد تسليم الطلبية ${order.orderNumber} بواسطة الموظف ${activeStaffName}؟`)) return;
-      order.status = 'مستلم';
-      order.deliveryStaffName = activeStaffName;
-      order.deliveredAt = new Date().toLocaleString('ar-IQ');
-      localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
-      renderOrders();
+      const deliveryAt = new Date().toISOString();
       try {
-        await postToApi({ action: 'deliver_order', orderNumber: order.orderNumber, deliveryStaffName: order.deliveryStaffName, deliveredAt: order.deliveredAt });
+        const result = await postToApi({ action: 'deliver_order', orderNumber: order.orderNumber, deliveryStaffName: activeStaffName, deliveredAt: deliveryAt });
+        if (result && result.order) Object.assign(order, result.order);
+        else { order.status = 'مستلم'; order.deliveryStaffName = activeStaffName; order.deliveredAt = deliveryAt; }
+        localStorage.setItem('samo_orders_v39', JSON.stringify(ordersList));
+        renderOrders();
         await loadRemoteData();
         alert("تم تسجيل التسليم وحفظ اسم الموظف في الشيت.");
-      } catch(e) { alert("تم تسجيل التسليم محلياً، لكن تعذر مزامنته مع الشيت."); }
+      } catch(e) {
+        // مصدر الحقيقة هو الخادم: لا نعرض الطلب كمسلّم إذا فشل الحفظ.
+        await loadRemoteData().catch(() => {});
+        alert("لم يتم تسجيل التسليم في الشيت، لذلك لم أغيّر حالة الطلب محلياً.\n\nالسبب: " + (e && e.message ? e.message : e));
+      }
     }
 
     async function returnOrderItem(itemIdx) {
